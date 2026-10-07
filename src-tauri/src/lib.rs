@@ -25,7 +25,11 @@ pub fn run() {
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             island::open_from_shortcut(app, "open");
         }))
-        .plugin(tauri_plugin_global_shortcut::Builder::new().build());
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ));
 
     #[cfg(target_os = "macos")]
     {
@@ -40,6 +44,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::settings_get,
             commands::settings_update,
+            commands::open_settings,
+            commands::set_ui_language,
             island::island_set_rect,
             island::island_focus,
             island::island_info,
@@ -90,7 +96,8 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     if let Err(err) = shortcuts::register(&handle, &settings) {
         eprintln!("No se pudieron registrar los atajos: {err}");
     }
-    tray::create(&handle)?;
+    let lang = if settings.language == "auto" { "es" } else { settings.language.as_str() };
+    tray::create(&handle, lang)?;
     island::spawn_tracker(handle);
     Ok(())
 }

@@ -147,6 +147,8 @@ pub struct Settings {
     /// Enseñar la miniatura con "Enviar" y "Cancelar" antes de mandar la captura.
     pub capture_confirm: bool,
     pub blocked_apps: Vec<String>,
+    /// Arrancar Tico al iniciar sesión.
+    pub autostart: bool,
 }
 
 impl Default for Settings {
@@ -172,6 +174,7 @@ impl Default for Settings {
             capture_mode: CaptureMode::Screen,
             capture_confirm: true,
             blocked_apps: default_blocked_apps(),
+            autostart: false,
         }
     }
 }

@@ -40,6 +40,8 @@ pub enum AppError {
     ScreenPermission,
     #[error("No se pudo capturar la pantalla: {0}")]
     Capture(String),
+    #[error("No se pudo cambiar el inicio con el sistema: {0}")]
+    Autostart(String),
 }
 
 impl AppError {
@@ -62,6 +64,7 @@ impl AppError {
             AppError::Blocked(_) => "blocked",
             AppError::ScreenPermission => "screenPermission",
             AppError::Capture(_) => "capture",
+            AppError::Autostart(_) => "autostart",
         }
     }
 }

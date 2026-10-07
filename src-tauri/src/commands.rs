@@ -1,16 +1,24 @@
-//! Comandos generales: ajustes y ventanas auxiliares.
+//! Comandos generales: ajustes, ventanas auxiliares e idioma.
 
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
+use tauri_plugin_autostart::ManagerExt;
 
-use crate::error::AppResult;
+use crate::error::{AppError, AppResult};
 use crate::island::{self, lock};
 use crate::settings::Settings;
 use crate::shortcuts;
 use crate::state::AppState;
+use crate::tray;
 
 #[tauri::command]
 pub fn settings_get(state: State<'_, AppState>) -> Settings {
     lock(&state.settings).clone()
+}
+
+fn apply_autostart(app: &AppHandle, enabled: bool) -> AppResult<()> {
+    let autolaunch = app.autolaunch();
+    let result = if enabled { autolaunch.enable() } else { autolaunch.disable() };
+    result.map_err(|e| AppError::Autostart(e.to_string()))
 }
 
 /// Guarda los ajustes, aplica lo que cambie y avisa a todas las ventanas.
@@ -27,6 +35,9 @@ pub fn settings_update(app: AppHandle, settings: Settings) -> AppResult<Settings
             return Err(err);
         }
     }
+    if new.autostart != old.autostart {
+        apply_autostart(&app, new.autostart)?;
+    }
 
     new.save(&state.settings_path)?;
     *lock(&state.settings) = new.clone();
@@ -41,4 +52,38 @@ pub fn settings_update(app: AppHandle, settings: Settings) -> AppResult<Settings
 
     app.emit("settings://changed", &new)?;
     Ok(new)
+}
+
+/// Abre (o trae al frente) la ventana de ajustes o la página de pruebas de Tico.
+pub fn open_window(app: &AppHandle, kind: &str) -> AppResult<()> {
+    let (label, page, title, size) = match kind {
+        "playground" => ("playground", "playground.html", "Tico · pruebas", (760.0, 820.0)),
+        _ => ("settings", "settings.html", "Tico", (760.0, 640.0)),
+    };
+    if let Some(window) = app.get_webview_window(label) {
+        window.unminimize()?;
+        window.show()?;
+        window.set_focus()?;
+        return Ok(());
+    }
+    let window = WebviewWindowBuilder::new(app, label, WebviewUrl::App(page.into()))
+        .title(title)
+        .inner_size(size.0, size.1)
+        .min_inner_size(420.0, 420.0)
+        .center()
+        .build()?;
+    window.set_focus()?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn open_settings(app: AppHandle, page: Option<String>) -> AppResult<()> {
+    open_window(&app, page.as_deref().unwrap_or("settings"))
+}
+
+/// El frontend sabe resolver "auto" con el idioma del sistema; nos lo dice para el menú.
+#[tauri::command]
+pub fn set_ui_language(app: AppHandle, lang: String) -> AppResult<()> {
+    tray::set_language(&app, &lang)?;
+    Ok(())
 }
