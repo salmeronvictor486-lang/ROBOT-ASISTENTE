@@ -41,13 +41,39 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": [
+      "nsis",
+      "app",
+      "dmg"
+    ],
+    "publisher": "Victor",
+    "copyright": "© 2026 Victor. Código MIT; Tico es un personaje con derechos reservados.",
+    "category": "Productivity",
+    "shortDescription": "Isla dinámica de escritorio con Tico, un robot asistente",
+    "longDescription": "Tico vive en el borde superior de la pantalla: al pasar el ratón baja una cápsula negra con un pequeño robot que chatea contigo y, solo cuando se lo pides, mira tu pantalla para ayudarte.",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper"
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": [
+          "Spanish",
+          "English"
+        ],
+        "displayLanguageSelector": true
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "signingIdentity": "-"
+    }
   }
 }

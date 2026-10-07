@@ -1,6 +1,6 @@
 # Licencia de los assets de Tico
 
-Copyright (c) 2026 Victor Salmerón. **Todos los derechos reservados.**
+Copyright (c) 2026 Victor. **Todos los derechos reservados.**
 
 La licencia MIT de este repositorio cubre **solo el código fuente**. No cubre:
 

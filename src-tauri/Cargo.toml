@@ -2,7 +2,7 @@
 name = "tico"
 version = "0.1.0"
 description = "Isla dinámica de escritorio con Tico, un robot asistente"
-authors = ["Victor Salmerón"]
+authors = ["Victor"]
 license = "MIT"
 edition = "2021"
 rust-version = "1.80"
