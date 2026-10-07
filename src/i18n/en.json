@@ -7,5 +7,20 @@
   "island.close": "Close",
   "island.protest1": "Hey! I'm getting dizzy",
   "island.protest2": "Stop, stop! I'm a robot, not a button",
-  "island.protest3": "Okay, okay… I heard you"
+  "island.protest3": "Okay, okay… I heard you",
+  "island.thinking": "Tico is thinking…",
+  "island.stop": "Stop",
+  "island.clear": "Clear conversation",
+  "island.emptyChat": "Ask me anything. If you want me to look at your screen, press “Look at my screen”.",
+  "island.conversationOpen": "Conversation open · click to continue",
+  "error.missingKey": "The API key is missing. Add it in Settings → Artificial intelligence.",
+  "error.invalidKey": "The API key isn't valid. Check it in Settings.",
+  "error.rateLimited": "You've hit the usage limit. Wait a bit and try again.",
+  "error.network": "Can't reach the AI service. Check your internet connection.",
+  "error.ollamaOffline": "Ollama isn't responding. Open it and try again.",
+  "error.model": "That model isn't available. Pick another one in Settings.",
+  "error.refused": "The model declined to answer this.",
+  "error.keyring": "I couldn't use the system keychain.",
+  "error.other": "Something went wrong: {message}",
+  "island.settings": "Settings"
 }

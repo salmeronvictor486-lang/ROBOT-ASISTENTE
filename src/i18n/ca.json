@@ -7,5 +7,20 @@
   "island.close": "Tanca",
   "island.protest1": "Ei! Que em marejo",
   "island.protest2": "Para, para! Que soc un robot, no un botó",
-  "island.protest3": "D'acord, d'acord… ja t'he sentit"
+  "island.protest3": "D'acord, d'acord… ja t'he sentit",
+  "island.thinking": "El Tico està pensant…",
+  "island.stop": "Atura",
+  "island.clear": "Esborra la conversa",
+  "island.emptyChat": "Pregunta'm el que vulguis. Si vols que miri la teva pantalla, prem «Mira la meva pantalla».",
+  "island.conversationOpen": "Conversa oberta · clic per continuar",
+  "error.missingKey": "Falta la clau d'API. Posa-la a Configuració → Intel·ligència artificial.",
+  "error.invalidKey": "La clau d'API no és vàlida. Revisa-la a Configuració.",
+  "error.rateLimited": "Has arribat al límit d'ús. Espera una mica i torna-ho a provar.",
+  "error.network": "No hi ha connexió amb el servei d'IA. Revisa la connexió a internet.",
+  "error.ollamaOffline": "L'Ollama no respon. Obre'l i torna-ho a provar.",
+  "error.model": "Aquest model no està disponible. Tria'n un altre a Configuració.",
+  "error.refused": "El model no ha volgut respondre a això.",
+  "error.keyring": "No he pogut fer servir el clauer del sistema.",
+  "error.other": "Alguna cosa ha fallat: {message}",
+  "island.settings": "Configuració"
 }

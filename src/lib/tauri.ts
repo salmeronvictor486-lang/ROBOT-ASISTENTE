@@ -1,6 +1,6 @@
-import { invoke } from "@tauri-apps/api/core";
+import { Channel, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { AppErrorPayload, IslandInfo, Rect, Settings } from "../types";
+import type { AppErrorPayload, ChatEvent, IslandInfo, ProviderKind, Rect, Settings } from "../types";
 
 /** `true` dentro de la app; `false` si abres Vite en un navegador normal. */
 export function isTauri(): boolean {
@@ -14,7 +14,17 @@ export const api = {
   islandSetRect: (rect: Rect | null) => invoke<undefined>("island_set_rect", { rect }),
   islandFocus: () => invoke<undefined>("island_focus"),
   islandInfo: () => invoke<IslandInfo>("island_info"),
+  chatSend: (text: string, attachCapture: boolean, onEvent: Channel<ChatEvent>) =>
+    invoke<undefined>("chat_send", { text, attachCapture, onEvent }),
+  chatCancel: () => invoke<undefined>("chat_cancel"),
+  chatClear: () => invoke<undefined>("chat_clear"),
+  aiTestConnection: (provider: ProviderKind) => invoke<string[]>("ai_test_connection", { provider }),
+  secretSet: (provider: ProviderKind, key: string) => invoke<undefined>("secret_set", { provider, key }),
+  secretDelete: (provider: ProviderKind) => invoke<undefined>("secret_delete", { provider }),
+  secretStatus: () => invoke<Partial<Record<ProviderKind, boolean>>>("secret_status"),
 };
+
+export { Channel };
 
 /**
  * Escucha un evento de Rust y devuelve una función para dejar de escuchar.

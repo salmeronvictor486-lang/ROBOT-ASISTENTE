@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { I18nContext, resolveLang, useT } from "../i18n";
-import { api, isTauri } from "../lib/tauri";
+import { api, isTauri, onEvent } from "../lib/tauri";
 import type { Expression } from "../robot/expressions";
 import { setGaze } from "../robot/gaze";
 import { Tico } from "../robot/Tico";
@@ -8,10 +8,11 @@ import { useTripleClick } from "../robot/useTripleClick";
 import { useSettings } from "../settings/useSettings";
 import type { IslandInfo, Settings } from "../types";
 import { Capsule } from "./Capsule";
-import { initialIsland, islandReducer, shouldAutoHide, type IslandState } from "./machine";
+import { ChatPanel } from "./ChatPanel";
+import { initialIsland, islandReducer, shouldAutoHide } from "./machine";
 import { capsuleGeometry, capsuleHitRect, capsuleX, TOP_GAP } from "./sizes";
+import { errorKey, useChat } from "./useChat";
 import { useIslandEvents } from "./useIslandEvents";
-import { onEvent } from "../lib/tauri";
 import "./island.css";
 
 /** Tiempo con el cursor sobre peek antes de pasar a compact. */
@@ -20,6 +21,8 @@ const DWELL_MS = 400;
 const SLEEP_AFTER_MS = 5 * 60 * 1000;
 /** Al despertar, Tico sigue dormido un momento antes de abrir los ojos. */
 const WAKE_UP_MS = 1500;
+const ERROR_MS = 2000;
+const HAPPY_MS = 1600;
 const PROTESTS = 3;
 
 export function IslandApp() {
@@ -29,6 +32,21 @@ export function IslandApp() {
       <Island settings={settings} />
     </I18nContext.Provider>
   );
+}
+
+/** `true` durante `ms` milisegundos después de cada cambio de `at`. */
+function useRecent(at: number, ms: number): boolean {
+  const [active, setActive] = useState(false);
+  useEffect(() => {
+    if (!at) return;
+    const on = window.setTimeout(() => setActive(true), 0);
+    const off = window.setTimeout(() => setActive(false), ms);
+    return () => {
+      window.clearTimeout(on);
+      window.clearTimeout(off);
+    };
+  }, [at, ms]);
+  return active;
 }
 
 function Island({ settings }: { settings: Settings }) {
@@ -42,38 +60,9 @@ function Island({ settings }: { settings: Settings }) {
   const [protest, setProtest] = useState<number | null>(null);
   const [sleeping, setSleeping] = useState(false);
   const lastUse = useRef<number | null>(null);
-
-  // Los ojos de Tico siguen al cursor que manda Rust.
-  useEffect(() => onEvent<{ x: number; y: number }>("island://cursor", (p) => setGaze(p.x, p.y)), []);
-  useEffect(() => {
-    if (isTauri()) return;
-    const onMove = (e: MouseEvent) => setGaze(e.clientX, e.clientY);
-    window.addEventListener("mousemove", onMove);
-    return () => window.removeEventListener("mousemove", onMove);
-  }, []);
-
-  // Si llevaba 5 minutos sin usarse, Tico aparece dormido y se despierta enseguida.
-  useEffect(() => {
-    if (ctx.state === "hidden" || lastUse.current === null) {
-      lastUse.current = Date.now();
-      return;
-    }
-    if (Date.now() - lastUse.current < SLEEP_AFTER_MS) return;
-    setSleeping(true);
-    const id = window.setTimeout(() => setSleeping(false), WAKE_UP_MS);
-    return () => window.clearTimeout(id);
-  }, [ctx.state]);
-
-  // Tres clics seguidos: Tico se sacude y protesta.
-  const onTicoClick = useTripleClick(() => {
-    setShake((n) => n + 1);
-    setProtest(Math.floor(Math.random() * PROTESTS));
-  });
-  useEffect(() => {
-    if (protest === null) return;
-    const id = window.setTimeout(() => setProtest(null), 2500);
-    return () => window.clearTimeout(id);
-  }, [protest]);
+  const chat = useChat();
+  const showError = useRecent(chat.errorAt, ERROR_MS);
+  const showHappy = useRecent(chat.doneAt, HAPPY_MS);
 
   useEffect(() => {
     if (isTauri()) api.islandInfo().then(setInfo).catch(console.error);
@@ -82,14 +71,29 @@ function Island({ settings }: { settings: Settings }) {
     return () => window.removeEventListener("resize", onResize);
   }, []);
 
-  const onShortcut = useCallback(() => {
+  // Los ojos de Tico siguen al cursor (de Rust, o del ratón en el navegador).
+  useEffect(() => onEvent<{ x: number; y: number }>("island://cursor", (p) => setGaze(p.x, p.y)), []);
+  useEffect(() => {
+    if (isTauri()) return;
+    const onMove = (e: MouseEvent) => {
+      setGaze(e.clientX, e.clientY);
+      // Sin Rust simulamos el sensor del borde superior.
+      if (e.clientY <= 3) dispatch({ type: "edgeHover" });
+    };
+    window.addEventListener("mousemove", onMove);
+    return () => window.removeEventListener("mousemove", onMove);
+  }, []);
+
+  const focusInput = useCallback(() => {
     requestAnimationFrame(() => inputRef.current?.focus());
   }, []);
-  useIslandEvents(dispatch, onShortcut);
+  useIslandEvents(dispatch, focusInput);
 
+  const conversationActive =
+    chat.messages.length > 0 || draft.trim().length > 0 || chat.phase !== "idle";
   useEffect(() => {
-    dispatch({ type: "conversation", active: draft.trim().length > 0 });
-  }, [draft]);
+    dispatch({ type: "conversation", active: conversationActive });
+  }, [conversationActive]);
 
   // Temporizador para esconderse cuando el cursor se va.
   const autoHide = shouldAutoHide(ctx);
@@ -119,21 +123,46 @@ function Island({ settings }: { settings: Settings }) {
   useEffect(() => {
     if (ctx.state !== "expanded") return;
     if (isTauri()) void api.islandFocus().catch(console.error);
-    inputRef.current?.focus();
+    focusInput();
+  }, [ctx.state, focusInput]);
+
+  // Si llevaba 5 minutos sin usarse, Tico aparece dormido y se despierta enseguida.
+  useEffect(() => {
+    if (ctx.state === "hidden" || lastUse.current === null) {
+      lastUse.current = Date.now();
+      return;
+    }
+    if (Date.now() - lastUse.current < SLEEP_AFTER_MS) return;
+    setSleeping(true);
+    const id = window.setTimeout(() => setSleeping(false), WAKE_UP_MS);
+    return () => window.clearTimeout(id);
   }, [ctx.state]);
 
-  // En el navegador (sin Rust) simulamos el sensor del borde con el ratón.
+  // Tres clics seguidos: Tico se sacude y protesta.
+  const onTicoClick = useTripleClick(() => {
+    setShake((n) => n + 1);
+    setProtest(Math.floor(Math.random() * PROTESTS));
+  });
   useEffect(() => {
-    if (isTauri()) return;
-    const onMove = (e: MouseEvent) => {
-      if (e.clientY <= 3) dispatch({ type: "edgeHover" });
-    };
-    window.addEventListener("mousemove", onMove);
-    return () => window.removeEventListener("mousemove", onMove);
-  }, []);
+    if (protest === null) return;
+    const id = window.setTimeout(() => setProtest(null), 2500);
+    return () => window.clearTimeout(id);
+  }, [protest]);
 
+  const send = () => {
+    const text = draft.trim();
+    if (!text) return;
+    setDraft("");
+    void chat.send(text);
+  };
+
+  // Prioridad de expresiones: lo más importante gana.
   let expression: Expression = "idle";
-  if (sleeping) expression = "sleeping";
+  if (showError) expression = "error";
+  else if (chat.phase === "talking") expression = "talking";
+  else if (chat.phase === "thinking") expression = "thinking";
+  else if (showHappy) expression = "happy";
+  else if (sleeping) expression = "sleeping";
   else if (ctx.pointerInside && ctx.state !== "expanded") expression = "curious";
 
   const topGap = info.notchWidth ? 0 : TOP_GAP;
@@ -155,6 +184,64 @@ function Island({ settings }: { settings: Settings }) {
     // `hitKey` resume `hit`: solo avisamos cuando cambia de verdad.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hitKey]);
+
+  const tico = (size: number) => (
+    <span className="tico-slot" onClick={onTicoClick}>
+      <Tico
+        size={size}
+        baseColor={settings.robotBaseColor}
+        accentColor={settings.robotAccentColor}
+        expression={expression}
+        bounce={chat.tokens}
+        shake={shake}
+      />
+    </span>
+  );
+
+  const protestText = protest === null ? null : t(`island.protest${protest + 1}` as "island.protest1");
+  const lastReply = [...chat.messages].reverse().find((m) => m.role === "assistant");
+  let status = t("island.hint");
+  if (protestText) status = protestText;
+  else if (chat.phase === "thinking") status = t("island.thinking");
+  else if (lastReply?.error) status = t(errorKey(lastReply.error), { message: lastReply.error.message });
+  else if (chat.phase === "talking" && lastReply) status = lastReply.text.slice(-80);
+  else if (chat.messages.length > 0) status = t("island.conversationOpen");
+
+  const box = { width: geometry.width, height: geometry.height };
+  let content = null;
+  if (ctx.state === "peek") {
+    content = (
+      <div className="content content-peek" style={box} key="peek">
+        {tico(28)}
+      </div>
+    );
+  } else if (ctx.state === "compact") {
+    content = (
+      <div className="content content-compact" style={box} key="compact">
+        {tico(36)}
+        <span className="status-line">{status}</span>
+      </div>
+    );
+  } else if (ctx.state === "expanded") {
+    content = (
+      <div className="content content-expanded" style={box} key="expanded">
+        <ChatPanel
+          tico={tico(40)}
+          title={protestText ?? "Tico"}
+          chat={chat}
+          draft={draft}
+          setDraft={setDraft}
+          inputRef={inputRef}
+          canSendEmpty={false}
+          onSend={send}
+          onLookAtScreen={() => undefined}
+          lookDisabled
+          onCollapse={() => dispatch({ type: "collapse" })}
+          onClose={() => dispatch({ type: "escape" })}
+        />
+      </div>
+    );
+  }
 
   const browserPointer = isTauri()
     ? {}
@@ -180,136 +267,8 @@ function Island({ settings }: { settings: Settings }) {
           dispatch({ type: "click" });
         }}
       >
-        <CapsuleContent
-          state={ctx.state}
-          settings={settings}
-          geometry={geometry}
-          t={t}
-          expression={expression}
-          shake={shake}
-          protest={protest}
-          onTicoClick={onTicoClick}
-          draft={draft}
-          setDraft={setDraft}
-          inputRef={inputRef}
-          onCollapse={() => dispatch({ type: "collapse" })}
-          onClose={() => dispatch({ type: "escape" })}
-        />
+        {content}
       </Capsule>
     </div>
   );
-}
-
-interface ContentProps {
-  state: IslandState;
-  settings: Settings;
-  geometry: { width: number; height: number };
-  t: ReturnType<typeof useT>;
-  expression: Expression;
-  shake: number;
-  protest: number | null;
-  onTicoClick: () => void;
-  draft: string;
-  setDraft: (value: string) => void;
-  inputRef: React.RefObject<HTMLTextAreaElement | null>;
-  onCollapse: () => void;
-  onClose: () => void;
-}
-
-function CapsuleContent({
-  state,
-  settings,
-  geometry,
-  t,
-  expression,
-  shake,
-  protest,
-  onTicoClick,
-  draft,
-  setDraft,
-  inputRef,
-  onCollapse,
-  onClose,
-}: ContentProps) {
-  const tico = (size: number) => (
-    <span className="tico-slot" onClick={onTicoClick}>
-      <Tico
-        size={size}
-        baseColor={settings.robotBaseColor}
-        accentColor={settings.robotAccentColor}
-        expression={expression}
-        shake={shake}
-      />
-    </span>
-  );
-  const protestText =
-    protest === null ? null : t(`island.protest${protest + 1}` as "island.protest1");
-  const box = { width: geometry.width, height: geometry.height };
-
-  switch (state) {
-    case "hidden":
-      return null;
-    case "peek":
-      return (
-        <div className="content content-peek" style={box} key="peek">
-          {tico(28)}
-        </div>
-      );
-    case "compact":
-      return (
-        <div className="content content-compact" style={box} key="compact">
-          {tico(36)}
-          <span className="status-line">{protestText ?? t("island.hint")}</span>
-        </div>
-      );
-    case "expanded":
-      return (
-        <div className="content content-expanded" style={box} key="expanded">
-          <header className="panel-header">
-            {tico(40)}
-            <strong className="panel-title">{protestText ?? "Tico"}</strong>
-            <button
-              type="button"
-              className="icon-button"
-              title={t("island.collapse")}
-              onClick={(e) => {
-                e.stopPropagation();
-                onCollapse();
-              }}
-            >
-              ▾
-            </button>
-            <button
-              type="button"
-              className="icon-button"
-              title={t("island.close")}
-              onClick={(e) => {
-                e.stopPropagation();
-                onClose();
-              }}
-            >
-              ×
-            </button>
-          </header>
-          <div className="messages" />
-          <form className="composer" onSubmit={(e) => e.preventDefault()}>
-            <textarea
-              ref={inputRef}
-              rows={1}
-              value={draft}
-              placeholder={t("island.placeholder")}
-              onChange={(e) => setDraft(e.target.value)}
-            />
-            <div className="composer-actions">
-              <button type="button" className="pill-button" disabled>
-                {t("island.lookAtScreen")}
-              </button>
-              <button type="submit" className="pill-button primary" disabled>
-                {t("island.send")}
-              </button>
-            </div>
-          </form>
-        </div>
-      );
-  }
 }

@@ -5,6 +5,11 @@ export type IslandPosition = "center" | "left" | "right";
 export type LanguageSetting = "auto" | "es" | "ca" | "en";
 export type ThemeSetting = "auto" | "light" | "dark";
 
+export type ProviderKind = "anthropic" | "openai" | "gemini" | "ollama";
+export const PROVIDERS: ProviderKind[] = ["anthropic", "openai", "gemini", "ollama"];
+
+export type ProviderModels = Record<ProviderKind, string>;
+
 export interface Settings {
   language: LanguageSetting;
   theme: ThemeSetting;
@@ -19,6 +24,9 @@ export interface Settings {
   hideOnFullscreen: boolean;
   shortcutOpen: string;
   sounds: boolean;
+  provider: ProviderKind;
+  models: ProviderModels;
+  ollamaUrl: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -35,6 +43,14 @@ export const DEFAULT_SETTINGS: Settings = {
   hideOnFullscreen: true,
   shortcutOpen: "CommandOrControl+Shift+Space",
   sounds: true,
+  provider: "anthropic",
+  models: {
+    anthropic: "claude-haiku-4-5",
+    openai: "gpt-4.1-mini",
+    gemini: "gemini-2.5-flash",
+    ollama: "gemma3",
+  },
+  ollamaUrl: "http://localhost:11434",
 };
 
 /** Rectángulo en px lógicos relativo a la ventana. */
@@ -55,3 +71,6 @@ export interface AppErrorPayload {
   kind: string;
   message: string;
 }
+
+/** Eventos del streaming del chat (`ChatEvent` en Rust). */
+export type ChatEvent = { type: "token"; text: string } | { type: "done" };

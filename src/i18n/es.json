@@ -7,5 +7,20 @@
   "island.close": "Cerrar",
   "island.protest1": "¡Eh! Que me mareo",
   "island.protest2": "¡Para, para! Que soy un robot, no un botón",
-  "island.protest3": "Vale, vale… ya te he oído"
+  "island.protest3": "Vale, vale… ya te he oído",
+  "island.thinking": "Tico está pensando…",
+  "island.stop": "Parar",
+  "island.clear": "Borrar conversación",
+  "island.emptyChat": "Pregúntame lo que quieras. Si necesitas que mire tu pantalla, pulsa «Mira mi pantalla».",
+  "island.conversationOpen": "Conversación abierta · clic para seguir",
+  "error.missingKey": "Falta la clave de API. Ponla en Ajustes → Inteligencia artificial.",
+  "error.invalidKey": "La clave de API no es válida. Revísala en Ajustes.",
+  "error.rateLimited": "Has llegado al límite de uso. Espera un poco y vuelve a probar.",
+  "error.network": "No hay conexión con el servicio de IA. Revisa tu internet.",
+  "error.ollamaOffline": "Ollama no responde. Ábrelo y vuelve a probar.",
+  "error.model": "Ese modelo no está disponible. Elige otro en Ajustes.",
+  "error.refused": "El modelo no ha querido responder a esto.",
+  "error.keyring": "No he podido usar el llavero del sistema.",
+  "error.other": "Algo ha fallado: {message}",
+  "island.settings": "Ajustes"
 }
