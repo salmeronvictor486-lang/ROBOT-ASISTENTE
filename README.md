@@ -27,7 +27,17 @@ Sin telemetría y sin cuentas.
 ## Instalar (sin compilar)
 
 Los instaladores se generan con GitHub Actions: pestaña **Actions → Instaladores →
-Run workflow**. Al terminar, descárgalos en **Artifacts** (`Tico-Windows` y `Tico-macOS`).
+Run workflow**. Al terminar, descárgalos en **Artifacts**:
+
+| Artifact | Para |
+| -------- | ---- |
+| `Tico-Windows-64bits` | Windows 10/11 de 64 bits con procesador Intel o AMD (lo más común) |
+| `Tico-Windows-32bits` | Windows de 32 bits y Windows 10 en procesador ARM |
+| `Tico-macOS` | Mac con Intel o Apple Silicon |
+
+¿Cuál es el tuyo? En Windows: **Configuración → Sistema → Acerca de → Tipo de sistema**.
+Si al abrir el de 64 bits sale "No se puede ejecutar esta aplicación en el equipo",
+usa el de 32 bits.
 
 Como la app **no está firmada** (firmar cuesta dinero), el sistema avisará la primera vez:
 

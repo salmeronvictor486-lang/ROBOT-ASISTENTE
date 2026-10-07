@@ -1,6 +1,8 @@
 name: Instaladores
 
-# Genera el .exe (Windows, NSIS) y el .dmg (macOS universal: Intel y Apple Silicon).
+# Genera los .exe de Windows (NSIS) y el .dmg (macOS universal: Intel y Apple Silicon).
+# Windows: x64 para equipos de 64 bits; x86 (32 bits) para Windows de 32 bits y para
+# Windows 10 en ARM, que no ejecuta programas x64 pero sí de 32 bits.
 # - A mano: pestaña Actions → "Instaladores" → Run workflow. Los archivos quedan en "Artifacts".
 # - Con una etiqueta v* (p. ej. v0.1.0): además crea un borrador de Release con los instaladores.
 
@@ -19,12 +21,18 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - name: Windows (.exe)
+          - name: Windows 64 bits (.exe)
             os: windows-latest
             rust-targets: ""
             args: --bundles nsis
             files: src-tauri/target/release/bundle/nsis/*.exe
-            artifact: Tico-Windows
+            artifact: Tico-Windows-64bits
+          - name: Windows 32 bits y ARM (.exe)
+            os: windows-latest
+            rust-targets: i686-pc-windows-msvc
+            args: --target i686-pc-windows-msvc --bundles nsis
+            files: src-tauri/target/i686-pc-windows-msvc/release/bundle/nsis/*.exe
+            artifact: Tico-Windows-32bits
           - name: macOS (.dmg)
             os: macos-latest
             rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
@@ -47,7 +55,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: src-tauri
-          key: release
+          key: release-${{ matrix.artifact }}
 
       - name: Instalar dependencias
         run: npm ci

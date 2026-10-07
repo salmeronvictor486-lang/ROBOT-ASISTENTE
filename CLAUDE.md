@@ -91,7 +91,7 @@ src-tauri/src/
 | `cd src-tauri && cargo clippy --all-targets -- -D warnings` | Lint de Rust |
 | `cd src-tauri && cargo test` | Tests de Rust (incluye un servidor HTTP falso para el streaming) |
 | `npx tauri icon assets/tico.svg` | Regenera los iconos (borra luego `icons/android` e `icons/ios`) |
-| Actions → Instaladores → Run workflow | `.exe` y `.dmg` como artifacts |
+| Actions → Instaladores → Run workflow | `.exe` (64 y 32 bits) y `.dmg` como artifacts |
 
 ## Decisiones tomadas
 1. **Proyecto en la raíz del repo** (no en `tico/`): el repo es el proyecto.
@@ -116,6 +116,9 @@ src-tauri/src/
 16. **La isla tiene `contentProtected`**: no aparece en capturas (tampoco en las tuyas).
 17. **Ajustes de texto se guardan al salir del campo**, el resto al momento.
 18. **Instalador de Windows por usuario** (sin admin) y **.dmg universal** firmado ad hoc.
+    Windows tiene dos instaladores: x64 y x86 (32 bits). El de x86 existe porque el PC de
+    Victor (Windows 10) mostró "No se puede ejecutar esta aplicación en el equipo" con el x64:
+    sirve para Windows de 32 bits y para Windows 10 ARM (que no emula x64).
     El NSIS de Tauri no tiene catalán: el instalador va en castellano o inglés.
 19. **Copyright a nombre de "Victor"** (como en `LICENSE`).
 
