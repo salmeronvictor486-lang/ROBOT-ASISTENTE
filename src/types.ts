@@ -1,0 +1,57 @@
+/** Tipos compartidos con Rust. Deben coincidir con `src-tauri/src/settings.rs`. */
+
+export type IslandSize = "s" | "m" | "l";
+export type IslandPosition = "center" | "left" | "right";
+export type LanguageSetting = "auto" | "es" | "ca" | "en";
+export type ThemeSetting = "auto" | "light" | "dark";
+
+export interface Settings {
+  language: LanguageSetting;
+  theme: ThemeSetting;
+  robotBaseColor: string;
+  robotAccentColor: string;
+  islandSize: IslandSize;
+  islandPosition: IslandPosition;
+  activationWidth: number;
+  showDelayMs: number;
+  hideDelayMs: number;
+  followCursorMonitor: boolean;
+  hideOnFullscreen: boolean;
+  shortcutOpen: string;
+  sounds: boolean;
+}
+
+export const DEFAULT_SETTINGS: Settings = {
+  language: "auto",
+  theme: "auto",
+  robotBaseColor: "#F2F0EB",
+  robotAccentColor: "#3DD6D0",
+  islandSize: "m",
+  islandPosition: "center",
+  activationWidth: 400,
+  showDelayMs: 150,
+  hideDelayMs: 600,
+  followCursorMonitor: true,
+  hideOnFullscreen: true,
+  shortcutOpen: "CommandOrControl+Shift+Space",
+  sounds: true,
+};
+
+/** Rectángulo en px lógicos relativo a la ventana. */
+export interface Rect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export interface IslandInfo {
+  platform: string;
+  notchWidth: number | null;
+}
+
+/** Error que devuelven los comandos de Rust (`AppError`). */
+export interface AppErrorPayload {
+  kind: string;
+  message: string;
+}
