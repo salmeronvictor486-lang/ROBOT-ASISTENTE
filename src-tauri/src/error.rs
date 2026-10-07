@@ -15,6 +15,24 @@ pub enum AppError {
     Json(#[from] serde_json::Error),
     #[error("Atajo de teclado no válido: {0}")]
     Shortcut(String),
+    #[error("No hay conexión con el servicio de IA: {0}")]
+    Network(#[from] reqwest::Error),
+    #[error("Falta la clave de API de {0}")]
+    MissingKey(&'static str),
+    #[error("La clave de API de {0} no es válida")]
+    InvalidKey(&'static str),
+    #[error("Has llegado al límite de uso de {0}; espera un poco")]
+    RateLimited(&'static str),
+    #[error("El modelo no existe o no está disponible: {0}")]
+    Model(String),
+    #[error("Ollama no responde. ¿Está abierto?")]
+    OllamaOffline,
+    #[error("El modelo ha rechazado responder a esta petición")]
+    Refused,
+    #[error("{0}")]
+    Provider(String),
+    #[error("Llavero del sistema: {0}")]
+    Keyring(#[from] keyring::Error),
 }
 
 impl AppError {
@@ -25,6 +43,15 @@ impl AppError {
             AppError::Io(_) => "io",
             AppError::Json(_) => "io",
             AppError::Shortcut(_) => "shortcut",
+            AppError::Network(_) => "network",
+            AppError::MissingKey(_) => "missingKey",
+            AppError::InvalidKey(_) => "invalidKey",
+            AppError::RateLimited(_) => "rateLimited",
+            AppError::Model(_) => "model",
+            AppError::OllamaOffline => "ollamaOffline",
+            AppError::Refused => "refused",
+            AppError::Provider(_) => "provider",
+            AppError::Keyring(_) => "keyring",
         }
     }
 }

@@ -1,7 +1,10 @@
+mod ai;
+mod chat;
 mod commands;
 mod error;
 mod island;
 mod platform;
+mod secrets;
 mod settings;
 mod shortcuts;
 mod state;
@@ -39,6 +42,13 @@ pub fn run() {
             island::island_set_rect,
             island::island_focus,
             island::island_info,
+            chat::chat_send,
+            chat::chat_cancel,
+            chat::chat_clear,
+            chat::ai_test_connection,
+            chat::secret_set,
+            chat::secret_delete,
+            chat::secret_status,
         ])
         .run(tauri::generate_context!());
 

@@ -36,6 +36,64 @@ pub enum IslandPosition {
     Right,
 }
 
+/// Proveedor de IA elegido por el usuario.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ProviderKind {
+    #[default]
+    Anthropic,
+    Openai,
+    Gemini,
+    Ollama,
+}
+
+impl ProviderKind {
+    pub const WITH_KEY: [ProviderKind; 3] =
+        [ProviderKind::Anthropic, ProviderKind::Openai, ProviderKind::Gemini];
+
+    pub fn id(self) -> &'static str {
+        match self {
+            ProviderKind::Anthropic => "anthropic",
+            ProviderKind::Openai => "openai",
+            ProviderKind::Gemini => "gemini",
+            ProviderKind::Ollama => "ollama",
+        }
+    }
+}
+
+/// Modelo elegido para cada proveedor. Son valores por defecto editables:
+/// en Ajustes, "Probar conexión" lista los modelos disponibles.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct ProviderModels {
+    pub anthropic: String,
+    pub openai: String,
+    pub gemini: String,
+    pub ollama: String,
+}
+
+impl Default for ProviderModels {
+    fn default() -> Self {
+        Self {
+            anthropic: "claude-haiku-4-5".into(),
+            openai: "gpt-4.1-mini".into(),
+            gemini: "gemini-2.5-flash".into(),
+            ollama: "gemma3".into(),
+        }
+    }
+}
+
+impl ProviderModels {
+    pub fn get(&self, provider: ProviderKind) -> &str {
+        match provider {
+            ProviderKind::Anthropic => &self.anthropic,
+            ProviderKind::Openai => &self.openai,
+            ProviderKind::Gemini => &self.gemini,
+            ProviderKind::Ollama => &self.ollama,
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
@@ -56,6 +114,9 @@ pub struct Settings {
     pub hide_on_fullscreen: bool,
     pub shortcut_open: String,
     pub sounds: bool,
+    pub provider: ProviderKind,
+    pub models: ProviderModels,
+    pub ollama_url: String,
 }
 
 impl Default for Settings {
@@ -74,6 +135,9 @@ impl Default for Settings {
             hide_on_fullscreen: true,
             shortcut_open: "CommandOrControl+Shift+Space".into(),
             sounds: true,
+            provider: ProviderKind::Anthropic,
+            models: ProviderModels::default(),
+            ollama_url: "http://localhost:11434".into(),
         }
     }
 }
@@ -105,6 +169,21 @@ impl Settings {
         self.hide_delay_ms = self.hide_delay_ms.clamp(100, 10_000);
         if self.shortcut_open.trim().is_empty() {
             self.shortcut_open = defaults.shortcut_open;
+        }
+        for (model, default) in [
+            (&mut self.models.anthropic, defaults.models.anthropic),
+            (&mut self.models.openai, defaults.models.openai),
+            (&mut self.models.gemini, defaults.models.gemini),
+            (&mut self.models.ollama, defaults.models.ollama),
+        ] {
+            *model = model.trim().to_string();
+            if model.is_empty() {
+                *model = default;
+            }
+        }
+        self.ollama_url = self.ollama_url.trim().trim_end_matches('/').to_string();
+        if !(self.ollama_url.starts_with("http://") || self.ollama_url.starts_with("https://")) {
+            self.ollama_url = defaults.ollama_url;
         }
         self
     }
@@ -152,9 +231,16 @@ mod tests {
             robot_base_color: "rojo".into(),
             activation_width: 5,
             language: "fr".into(),
+            ollama_url: "localhost".into(),
+            models: ProviderModels {
+                openai: "  ".into(),
+                ..ProviderModels::default()
+            },
             ..Settings::default()
         }
         .sanitized();
+        assert_eq!(s.ollama_url, "http://localhost:11434");
+        assert_eq!(s.models.openai, "gpt-4.1-mini");
         assert_eq!(s.robot_base_color, "#F2F0EB");
         assert_eq!(s.activation_width, 100);
         assert_eq!(s.language, "auto");
