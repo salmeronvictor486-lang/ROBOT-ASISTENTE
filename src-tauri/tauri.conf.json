@@ -12,17 +12,32 @@
   "app": {
     "windows": [
       {
-        "label": "main",
+        "label": "island",
+        "url": "index.html",
         "title": "Tico",
-        "width": 480,
-        "height": 360,
-        "resizable": true,
-        "center": true
+        "width": 560,
+        "height": 376,
+        "x": 0,
+        "y": 0,
+        "transparent": true,
+        "decorations": false,
+        "alwaysOnTop": true,
+        "skipTaskbar": true,
+        "resizable": false,
+        "maximizable": false,
+        "minimizable": false,
+        "shadow": false,
+        "focus": false,
+        "visible": true,
+        "contentProtected": true,
+        "visibleOnAllWorkspaces": true,
+        "acceptFirstMouse": true
       }
     ],
     "security": {
       "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'"
-    }
+    },
+    "macOSPrivateApi": true
   },
   "bundle": {
     "active": true,

@@ -1,7 +1,13 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Permisos de la ventana principal",
-  "windows": ["main"],
-  "permissions": ["core:default"]
+  "description": "Permisos de las ventanas de Tico",
+  "windows": [
+    "island",
+    "settings",
+    "playground"
+  ],
+  "permissions": [
+    "core:default"
+  ]
 }

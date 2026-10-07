@@ -16,10 +16,20 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2.7", features = [] }
 
 [dependencies]
-tauri = { version = "2.12", features = [] }
+tauri = { version = "2.12", features = ["macos-private-api", "tray-icon", "image-png"] }
+tauri-plugin-global-shortcut = "2.3"
+tauri-plugin-autostart = "2.5"
+tauri-plugin-single-instance = "2.4"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
+xcap = "0.9"
+keyring = { version = "3.6", features = ["apple-native", "windows-native"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+base64 = "0.22"
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "http2", "charset"] }
+futures-util = "0.3"
+tokio = { version = "1", features = ["sync", "time", "macros"] }
 
 [profile.release]
 codegen-units = 1
@@ -27,3 +37,6 @@ lto = true
 opt-level = "s"
 panic = "abort"
 strip = true
+
+[target.'cfg(target_os = "macos")'.dependencies]
+tauri-nspanel = "2"
