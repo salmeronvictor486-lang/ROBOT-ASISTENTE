@@ -22,5 +22,13 @@
   "error.refused": "The model declined to answer this.",
   "error.keyring": "I couldn't use the system keychain.",
   "error.other": "Something went wrong: {message}",
-  "island.settings": "Settings"
+  "island.settings": "Settings",
+  "island.capturing": "Looking at your screen…",
+  "island.capturePreview": "This is what I'll send",
+  "island.captureCancel": "Cancel",
+  "island.defaultQuestion": "What do you see on my screen? Can you help me with what I'm doing?",
+  "island.openPermission": "Open System Settings",
+  "error.blocked": "I won't look: a protected app is on screen ({message}).",
+  "error.screenPermission": "I need Screen Recording permission. Turn it on for Tico in System Settings and reopen it.",
+  "error.capture": "I couldn't capture the screen. {message}"
 }

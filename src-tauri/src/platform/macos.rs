@@ -3,17 +3,21 @@
 use tauri::{AppHandle, WebviewWindow};
 use tauri_nspanel::objc2::MainThreadMarker;
 use tauri_nspanel::objc2_app_kit::{NSScreen, NSWindowStyleMask};
-use tauri_nspanel::{tauri_panel, CollectionBehavior, ManagerExt, PanelLevel, WebviewWindowExt};
+use tauri_nspanel::{CollectionBehavior, ManagerExt, PanelLevel, WebviewWindowExt};
 
 use crate::island::ISLAND_LABEL;
+use panel::IslandPanel;
 
-tauri_panel! {
-    panel!(IslandPanel {
-        config: {
-            can_become_key_window: true,
-            is_floating_panel: true
-        }
-    })
+/// El macro importa sus propios nombres (p. ej. `MainThreadMarker`): lo aislamos en un módulo.
+mod panel {
+    tauri_nspanel::tauri_panel! {
+        panel!(IslandPanel {
+            config: {
+                can_become_key_window: true,
+                is_floating_panel: true
+            }
+        })
+    }
 }
 
 /// Convierte la ventana de la isla en un panel no activable por encima de la barra de menús.

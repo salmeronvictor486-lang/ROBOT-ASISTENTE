@@ -22,5 +22,13 @@
   "error.refused": "El modelo no ha querido responder a esto.",
   "error.keyring": "No he podido usar el llavero del sistema.",
   "error.other": "Algo ha fallado: {message}",
-  "island.settings": "Ajustes"
+  "island.settings": "Ajustes",
+  "island.capturing": "Mirando tu pantalla…",
+  "island.capturePreview": "Esto es lo que voy a enviar",
+  "island.captureCancel": "Cancelar",
+  "island.defaultQuestion": "¿Qué ves en mi pantalla? ¿Me ayudas con lo que estoy haciendo?",
+  "island.openPermission": "Abrir Ajustes del Sistema",
+  "error.blocked": "No miro la pantalla: hay una app protegida a la vista ({message}).",
+  "error.screenPermission": "Necesito permiso de Grabación de pantalla. Actívalo para Tico en Ajustes del Sistema y vuelve a abrirlo.",
+  "error.capture": "No he podido capturar la pantalla. {message}"
 }

@@ -36,6 +36,31 @@ pub enum IslandPosition {
     Right,
 }
 
+/// Qué captura "Mira mi pantalla".
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum CaptureMode {
+    /// El monitor donde está el cursor.
+    #[default]
+    Screen,
+    /// Solo la ventana activa.
+    Window,
+}
+
+/// Apps y webs que Tico nunca mira (se buscan como palabra en el nombre o el título).
+pub fn default_blocked_apps() -> Vec<String> {
+    [
+        "1Password", "Bitwarden", "KeePass", "KeePassXC", "LastPass", "Dashlane", "Keeper",
+        "NordPass", "Proton Pass", "Enpass", "Keychain Access", "Acceso a Llaveros",
+        "Contraseñas", "Passwords", "Banco", "Bank", "BBVA", "CaixaBank", "Santander",
+        "Sabadell", "Bankinter", "Openbank", "Unicaja", "Abanca", "Kutxabank", "ING",
+        "Revolut", "N26", "PayPal",
+    ]
+    .into_iter()
+    .map(String::from)
+    .collect()
+}
+
 /// Proveedor de IA elegido por el usuario.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -117,6 +142,11 @@ pub struct Settings {
     pub provider: ProviderKind,
     pub models: ProviderModels,
     pub ollama_url: String,
+    pub shortcut_capture: String,
+    pub capture_mode: CaptureMode,
+    /// Enseñar la miniatura con "Enviar" y "Cancelar" antes de mandar la captura.
+    pub capture_confirm: bool,
+    pub blocked_apps: Vec<String>,
 }
 
 impl Default for Settings {
@@ -138,6 +168,10 @@ impl Default for Settings {
             provider: ProviderKind::Anthropic,
             models: ProviderModels::default(),
             ollama_url: "http://localhost:11434".into(),
+            shortcut_capture: "CommandOrControl+Shift+S".into(),
+            capture_mode: CaptureMode::Screen,
+            capture_confirm: true,
+            blocked_apps: default_blocked_apps(),
         }
     }
 }
@@ -181,6 +215,16 @@ impl Settings {
                 *model = default;
             }
         }
+        if self.shortcut_capture.trim().is_empty() {
+            self.shortcut_capture = defaults.shortcut_capture;
+        }
+        self.blocked_apps = self
+            .blocked_apps
+            .iter()
+            .map(|a| a.trim().to_string())
+            .filter(|a| !a.is_empty())
+            .collect();
+        self.blocked_apps.dedup();
         self.ollama_url = self.ollama_url.trim().trim_end_matches('/').to_string();
         if !(self.ollama_url.starts_with("http://") || self.ollama_url.starts_with("https://")) {
             self.ollama_url = defaults.ollama_url;

@@ -20,7 +20,7 @@ pub fn settings_update(app: AppHandle, settings: Settings) -> AppResult<Settings
     let new = settings.sanitized();
     let old = lock(&state.settings).clone();
 
-    if new.shortcut_open != old.shortcut_open {
+    if new.shortcut_open != old.shortcut_open || new.shortcut_capture != old.shortcut_capture {
         if let Err(err) = shortcuts::register(&app, &new) {
             // Si el atajo nuevo no vale, volvemos a dejar los anteriores activos.
             let _ = shortcuts::register(&app, &old);

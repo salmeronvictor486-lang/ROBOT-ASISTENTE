@@ -14,7 +14,10 @@ pub fn register(app: &AppHandle, settings: &Settings) -> AppResult<()> {
         .unregister_all()
         .map_err(|e| AppError::Shortcut(e.to_string()))?;
 
-    let bindings: [(&str, &'static str); 1] = [(settings.shortcut_open.as_str(), "open")];
+    let bindings: [(&str, &'static str); 2] = [
+        (settings.shortcut_open.as_str(), "open"),
+        (settings.shortcut_capture.as_str(), "capture"),
+    ];
     for (accelerator, action) in bindings {
         shortcuts
             .on_shortcut(accelerator, move |app, _shortcut, event| {

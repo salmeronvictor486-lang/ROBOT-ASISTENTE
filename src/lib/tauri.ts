@@ -1,6 +1,6 @@
 import { Channel, invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { AppErrorPayload, ChatEvent, IslandInfo, ProviderKind, Rect, Settings } from "../types";
+import type { AppErrorPayload, CapturePreview, ChatEvent, IslandInfo, ProviderKind, Rect, Settings } from "../types";
 
 /** `true` dentro de la app; `false` si abres Vite en un navegador normal. */
 export function isTauri(): boolean {
@@ -21,6 +21,9 @@ export const api = {
   aiTestConnection: (provider: ProviderKind) => invoke<string[]>("ai_test_connection", { provider }),
   secretSet: (provider: ProviderKind, key: string) => invoke<undefined>("secret_set", { provider, key }),
   secretDelete: (provider: ProviderKind) => invoke<undefined>("secret_delete", { provider }),
+  captureScreen: () => invoke<CapturePreview>("capture_screen"),
+  captureDiscard: () => invoke<undefined>("capture_discard"),
+  openScreenPermissionSettings: () => invoke<undefined>("open_screen_permission_settings"),
   secretStatus: () => invoke<Partial<Record<ProviderKind, boolean>>>("secret_status"),
 };
 

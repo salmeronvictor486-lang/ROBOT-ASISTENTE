@@ -19,6 +19,7 @@ interface Props {
   onCollapse: () => void;
   onClose: () => void;
   onSettings?: () => void;
+  onOpenPermission: () => void;
 }
 
 /** Panel expandido: cabecera, mensajes y cuadro de texto. */
@@ -37,6 +38,7 @@ export function ChatPanel({
   onCollapse,
   onClose,
   onSettings,
+  onOpenPermission,
 }: Props) {
   const t = useT();
   const listRef = useRef<HTMLDivElement>(null);
@@ -91,6 +93,11 @@ export function ChatPanel({
             )}
             {m.error && (
               <p className="message-error">{t(errorKey(m.error), { message: m.error.message })}</p>
+            )}
+            {m.error?.kind === "screenPermission" && (
+              <button type="button" className="pill-button" onClick={onOpenPermission}>
+                {t("island.openPermission")}
+              </button>
             )}
           </div>
         ))}

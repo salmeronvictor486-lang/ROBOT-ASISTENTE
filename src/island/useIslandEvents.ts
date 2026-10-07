@@ -2,14 +2,16 @@ import { useEffect, type Dispatch } from "react";
 import { onEvent } from "../lib/tauri";
 import type { IslandEvent } from "./machine";
 
+export type ShortcutAction = "open" | "capture";
+
 interface ShortcutPayload {
-  action: "open" | "capture";
+  action: ShortcutAction;
 }
 
 /** Traduce los eventos de Rust (sensores y atajos) a eventos de la máquina. */
 export function useIslandEvents(
   dispatch: Dispatch<IslandEvent>,
-  onShortcut: (action: ShortcutPayload["action"]) => void,
+  onShortcut: (action: ShortcutAction) => void,
 ) {
   useEffect(() => {
     const offs = [

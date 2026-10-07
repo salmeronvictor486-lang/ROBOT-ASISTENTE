@@ -1,4 +1,5 @@
 mod ai;
+mod capture;
 mod chat;
 mod commands;
 mod error;
@@ -49,6 +50,9 @@ pub fn run() {
             chat::secret_set,
             chat::secret_delete,
             chat::secret_status,
+            capture::capture_screen,
+            capture::capture_discard,
+            capture::open_screen_permission_settings,
         ])
         .run(tauri::generate_context!());
 

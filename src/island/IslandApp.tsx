@@ -1,18 +1,19 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { I18nContext, resolveLang, useT } from "../i18n";
-import { api, isTauri, onEvent } from "../lib/tauri";
+import { api, isTauri, onEvent, toAppError } from "../lib/tauri";
 import type { Expression } from "../robot/expressions";
 import { setGaze } from "../robot/gaze";
 import { Tico } from "../robot/Tico";
 import { useTripleClick } from "../robot/useTripleClick";
 import { useSettings } from "../settings/useSettings";
-import type { IslandInfo, Settings } from "../types";
+import type { CapturePreview, IslandInfo, Settings } from "../types";
+import { CaptureAttachment } from "./CaptureAttachment";
 import { Capsule } from "./Capsule";
 import { ChatPanel } from "./ChatPanel";
 import { initialIsland, islandReducer, shouldAutoHide } from "./machine";
 import { capsuleGeometry, capsuleHitRect, capsuleX, TOP_GAP } from "./sizes";
 import { errorKey, useChat } from "./useChat";
-import { useIslandEvents } from "./useIslandEvents";
+import { useIslandEvents, type ShortcutAction } from "./useIslandEvents";
 import "./island.css";
 
 /** Tiempo con el cursor sobre peek antes de pasar a compact. */
@@ -61,6 +62,8 @@ function Island({ settings }: { settings: Settings }) {
   const [sleeping, setSleeping] = useState(false);
   const lastUse = useRef<number | null>(null);
   const chat = useChat();
+  const [capturing, setCapturing] = useState(false);
+  const [pendingCapture, setPendingCapture] = useState<CapturePreview | null>(null);
   const showError = useRecent(chat.errorAt, ERROR_MS);
   const showHappy = useRecent(chat.doneAt, HAPPY_MS);
 
@@ -87,10 +90,56 @@ function Island({ settings }: { settings: Settings }) {
   const focusInput = useCallback(() => {
     requestAnimationFrame(() => inputRef.current?.focus());
   }, []);
-  useIslandEvents(dispatch, focusInput);
+
+  /** Envía un mensaje; si hay captura pendiente, va con ella. */
+  const sendMessage = useCallback(
+    (text: string, capture: CapturePreview | null) => {
+      setDraft("");
+      setPendingCapture(null);
+      void chat.send(text, capture ? { thumbnail: capture.thumbnail } : undefined);
+    },
+    [chat],
+  );
+
+  /** "Mira mi pantalla": captura y, según el ajuste, enseña la miniatura o la envía ya. */
+  const lookAtScreen = useCallback(async () => {
+    if (!isTauri() || capturing) return;
+    setCapturing(true);
+    try {
+      const preview = await api.captureScreen();
+      if (settings.captureConfirm) {
+        setPendingCapture(preview);
+        focusInput();
+      } else {
+        sendMessage(draft.trim() || t("island.defaultQuestion"), preview);
+      }
+    } catch (e) {
+      chat.notify(toAppError(e));
+    } finally {
+      setCapturing(false);
+    }
+  }, [capturing, chat, draft, focusInput, sendMessage, settings.captureConfirm, t]);
+
+  const discardCapture = useCallback(() => {
+    setPendingCapture(null);
+    if (isTauri()) void api.captureDiscard().catch(console.error);
+  }, []);
+
+  const onShortcut = useCallback(
+    (action: ShortcutAction) => {
+      focusInput();
+      if (action === "capture") void lookAtScreen();
+    },
+    [focusInput, lookAtScreen],
+  );
+  useIslandEvents(dispatch, onShortcut);
 
   const conversationActive =
-    chat.messages.length > 0 || draft.trim().length > 0 || chat.phase !== "idle";
+    chat.messages.length > 0 ||
+    draft.trim().length > 0 ||
+    chat.phase !== "idle" ||
+    capturing ||
+    pendingCapture !== null;
   useEffect(() => {
     dispatch({ type: "conversation", active: conversationActive });
   }, [conversationActive]);
@@ -150,15 +199,14 @@ function Island({ settings }: { settings: Settings }) {
   }, [protest]);
 
   const send = () => {
-    const text = draft.trim();
-    if (!text) return;
-    setDraft("");
-    void chat.send(text);
+    const text = draft.trim() || (pendingCapture ? t("island.defaultQuestion") : "");
+    if (text) sendMessage(text, pendingCapture);
   };
 
   // Prioridad de expresiones: lo más importante gana.
   let expression: Expression = "idle";
   if (showError) expression = "error";
+  else if (capturing || pendingCapture) expression = "watching";
   else if (chat.phase === "talking") expression = "talking";
   else if (chat.phase === "thinking") expression = "thinking";
   else if (showHappy) expression = "happy";
@@ -202,6 +250,7 @@ function Island({ settings }: { settings: Settings }) {
   const lastReply = [...chat.messages].reverse().find((m) => m.role === "assistant");
   let status = t("island.hint");
   if (protestText) status = protestText;
+  else if (capturing) status = t("island.capturing");
   else if (chat.phase === "thinking") status = t("island.thinking");
   else if (lastReply?.error) status = t(errorKey(lastReply.error), { message: lastReply.error.message });
   else if (chat.phase === "talking" && lastReply) status = lastReply.text.slice(-80);
@@ -232,10 +281,14 @@ function Island({ settings }: { settings: Settings }) {
           draft={draft}
           setDraft={setDraft}
           inputRef={inputRef}
-          canSendEmpty={false}
+          attachment={
+            pendingCapture && <CaptureAttachment preview={pendingCapture} onCancel={discardCapture} />
+          }
+          canSendEmpty={pendingCapture !== null}
           onSend={send}
-          onLookAtScreen={() => undefined}
-          lookDisabled
+          onLookAtScreen={() => void lookAtScreen()}
+          lookDisabled={capturing || !isTauri()}
+          onOpenPermission={() => void api.openScreenPermissionSettings().catch(console.error)}
           onCollapse={() => dispatch({ type: "collapse" })}
           onClose={() => dispatch({ type: "escape" })}
         />
@@ -261,7 +314,7 @@ function Island({ settings }: { settings: Settings }) {
         x={x}
         top={topGap}
         visible={ctx.state !== "hidden"}
-        capturing={false}
+        capturing={capturing}
         onClick={() => {
           setSleeping(false);
           dispatch({ type: "click" });

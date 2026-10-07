@@ -33,6 +33,13 @@ pub enum AppError {
     Provider(String),
     #[error("Llavero del sistema: {0}")]
     Keyring(#[from] keyring::Error),
+    #[error("{0}")]
+    Blocked(String),
+    #[error("Falta el permiso de Grabación de pantalla")]
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
+    ScreenPermission,
+    #[error("No se pudo capturar la pantalla: {0}")]
+    Capture(String),
 }
 
 impl AppError {
@@ -52,6 +59,9 @@ impl AppError {
             AppError::Refused => "refused",
             AppError::Provider(_) => "provider",
             AppError::Keyring(_) => "keyring",
+            AppError::Blocked(_) => "blocked",
+            AppError::ScreenPermission => "screenPermission",
+            AppError::Capture(_) => "capture",
         }
     }
 }
@@ -66,3 +76,15 @@ impl Serialize for AppError {
 }
 
 pub type AppResult<T> = Result<T, AppError>;
+
+impl From<xcap::XCapError> for AppError {
+    fn from(err: xcap::XCapError) -> Self {
+        AppError::Capture(err.to_string())
+    }
+}
+
+impl From<image::ImageError> for AppError {
+    fn from(err: image::ImageError) -> Self {
+        AppError::Capture(err.to_string())
+    }
+}

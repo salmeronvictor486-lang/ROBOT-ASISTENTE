@@ -5,6 +5,8 @@ export type IslandPosition = "center" | "left" | "right";
 export type LanguageSetting = "auto" | "es" | "ca" | "en";
 export type ThemeSetting = "auto" | "light" | "dark";
 
+export type CaptureMode = "screen" | "window";
+
 export type ProviderKind = "anthropic" | "openai" | "gemini" | "ollama";
 export const PROVIDERS: ProviderKind[] = ["anthropic", "openai", "gemini", "ollama"];
 
@@ -27,6 +29,10 @@ export interface Settings {
   provider: ProviderKind;
   models: ProviderModels;
   ollamaUrl: string;
+  shortcutCapture: string;
+  captureMode: CaptureMode;
+  captureConfirm: boolean;
+  blockedApps: string[];
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -51,6 +57,17 @@ export const DEFAULT_SETTINGS: Settings = {
     ollama: "gemma3",
   },
   ollamaUrl: "http://localhost:11434",
+  shortcutCapture: "CommandOrControl+Shift+S",
+  captureMode: "screen",
+  captureConfirm: true,
+  // Igual que `default_blocked_apps()` en Rust.
+  blockedApps: [
+    "1Password", "Bitwarden", "KeePass", "KeePassXC", "LastPass", "Dashlane", "Keeper",
+    "NordPass", "Proton Pass", "Enpass", "Keychain Access", "Acceso a Llaveros",
+    "Contraseñas", "Passwords", "Banco", "Bank", "BBVA", "CaixaBank", "Santander",
+    "Sabadell", "Bankinter", "Openbank", "Unicaja", "Abanca", "Kutxabank", "ING",
+    "Revolut", "N26", "PayPal",
+  ],
 };
 
 /** Rectángulo en px lógicos relativo a la ventana. */
@@ -74,3 +91,10 @@ export interface AppErrorPayload {
 
 /** Eventos del streaming del chat (`ChatEvent` en Rust). */
 export type ChatEvent = { type: "token"; text: string } | { type: "done" };
+
+/** Miniatura de una captura pendiente de enviar. */
+export interface CapturePreview {
+  thumbnail: string;
+  width: number;
+  height: number;
+}

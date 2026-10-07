@@ -24,6 +24,8 @@ export interface ChatApi {
   send: (text: string, capture?: { thumbnail: string }) => Promise<void>;
   cancel: () => void;
   clear: () => void;
+  /** Muestra un error de Tico (p. ej. de la captura) como si fuera su respuesta. */
+  notify: (error: AppErrorPayload) => void;
 }
 
 /** Estado del chat en la isla. El historial "de verdad" lo guarda Rust en memoria. */
@@ -90,7 +92,13 @@ export function useChat(): ChatApi {
     if (isTauri()) void api.chatClear().catch(console.error);
   }, []);
 
-  return { messages, phase, tokens, errorAt, doneAt, send, cancel, clear };
+  const notify = useCallback((error: AppErrorPayload) => {
+    const id = nextId.current++;
+    setMessages((m) => [...m, { id, role: "assistant", text: "", error }]);
+    setErrorAt(Date.now());
+  }, []);
+
+  return { messages, phase, tokens, errorAt, doneAt, send, cancel, clear, notify };
 }
 
 /** Clave de traducción para un error de Rust. */
@@ -104,6 +112,9 @@ export function errorKey(error: AppErrorPayload) {
     case "model":
     case "refused":
     case "keyring":
+    case "blocked":
+    case "screenPermission":
+    case "capture":
       return `error.${error.kind}` as const;
     default:
       return "error.other" as const;

@@ -289,3 +289,29 @@ body {
   display: grid;
   place-items: center;
 }
+
+.capture-attachment {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px;
+  border-radius: 12px;
+  background: #15171a;
+  border: 1px solid var(--accent);
+}
+
+.capture-attachment img {
+  height: 44px;
+  max-width: 90px;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.capture-attachment span {
+  flex: 1;
+  color: #c9c6bf;
+}
+
+.message .pill-button {
+  margin-top: 6px;
+}
