@@ -24,6 +24,8 @@ export const api = {
   captureScreen: () => invoke<CapturePreview>("capture_screen"),
   captureDiscard: () => invoke<undefined>("capture_discard"),
   openScreenPermissionSettings: () => invoke<undefined>("open_screen_permission_settings"),
+  openSettings: (page?: "settings" | "playground") => invoke<undefined>("open_settings", { page }),
+  setUiLanguage: (lang: string) => invoke<undefined>("set_ui_language", { lang }),
   secretStatus: () => invoke<Partial<Record<ProviderKind, boolean>>>("secret_status"),
 };
 

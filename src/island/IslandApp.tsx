@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
 import { I18nContext, resolveLang, useT } from "../i18n";
+import { playSound, type SoundKind } from "../lib/sound";
 import { api, isTauri, onEvent, toAppError } from "../lib/tauri";
 import type { Expression } from "../robot/expressions";
 import { setGaze } from "../robot/gaze";
@@ -28,8 +29,13 @@ const PROTESTS = 3;
 
 export function IslandApp() {
   const settings = useSettings();
+  const lang = resolveLang(settings.language);
+  // Rust no sabe el idioma del sistema; se lo decimos para traducir el menú de la bandeja.
+  useEffect(() => {
+    if (isTauri()) void api.setUiLanguage(lang).catch(console.error);
+  }, [lang]);
   return (
-    <I18nContext.Provider value={resolveLang(settings.language)}>
+    <I18nContext.Provider value={lang}>
       <Island settings={settings} />
     </I18nContext.Provider>
   );
@@ -65,6 +71,26 @@ function Island({ settings }: { settings: Settings }) {
   const [capturing, setCapturing] = useState(false);
   const [pendingCapture, setPendingCapture] = useState<CapturePreview | null>(null);
   const showError = useRecent(chat.errorAt, ERROR_MS);
+
+  const soundsOn = settings.sounds;
+  const sound = useCallback(
+    (kind: SoundKind) => {
+      if (soundsOn) playSound(kind);
+    },
+    [soundsOn],
+  );
+  useEffect(() => {
+    if (chat.doneAt) sound("done");
+  }, [chat.doneAt, sound]);
+  useEffect(() => {
+    if (chat.errorAt) sound("error");
+  }, [chat.errorAt, sound]);
+  const wasHidden = useRef(true);
+  useEffect(() => {
+    const hidden = ctx.state === "hidden";
+    if (wasHidden.current && !hidden) sound("open");
+    wasHidden.current = hidden;
+  }, [ctx.state, sound]);
   const showHappy = useRecent(chat.doneAt, HAPPY_MS);
 
   useEffect(() => {
@@ -96,9 +122,10 @@ function Island({ settings }: { settings: Settings }) {
     (text: string, capture: CapturePreview | null) => {
       setDraft("");
       setPendingCapture(null);
+      sound("send");
       void chat.send(text, capture ? { thumbnail: capture.thumbnail } : undefined);
     },
-    [chat],
+    [chat, sound],
   );
 
   /** "Mira mi pantalla": captura y, según el ajuste, enseña la miniatura o la envía ya. */
@@ -288,6 +315,7 @@ function Island({ settings }: { settings: Settings }) {
           onSend={send}
           onLookAtScreen={() => void lookAtScreen()}
           lookDisabled={capturing || !isTauri()}
+          onSettings={isTauri() ? () => void api.openSettings().catch(console.error) : undefined}
           onOpenPermission={() => void api.openScreenPermissionSettings().catch(console.error)}
           onCollapse={() => dispatch({ type: "collapse" })}
           onClose={() => dispatch({ type: "escape" })}

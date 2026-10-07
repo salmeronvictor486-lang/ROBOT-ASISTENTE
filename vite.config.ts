@@ -1,5 +1,6 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import pkg from "./package.json" with { type: "json" };
 
 // Si `tauri dev` corre en un móvil o en otra máquina, Tauri pasa aquí su IP.
 const host = process.env.TAURI_DEV_HOST;
@@ -7,6 +8,7 @@ const debug = Boolean(process.env.TAURI_ENV_DEBUG);
 
 export default defineConfig({
   plugins: [react()],
+  define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   // Tauri espera un puerto fijo y que Vite no limpie la terminal (para ver los logs de Rust).
   clearScreen: false,
   server: {
@@ -21,6 +23,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         island: "index.html",
+        settings: "settings.html",
         playground: "playground.html",
       },
     },

@@ -18,7 +18,7 @@ interface Props {
   lookDisabled: boolean;
   onCollapse: () => void;
   onClose: () => void;
-  onSettings?: () => void;
+  onSettings?: (() => void) | undefined;
   onOpenPermission: () => void;
 }
 

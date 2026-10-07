@@ -33,6 +33,7 @@ export interface Settings {
   captureMode: CaptureMode;
   captureConfirm: boolean;
   blockedApps: string[];
+  autostart: boolean;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -68,6 +69,7 @@ export const DEFAULT_SETTINGS: Settings = {
     "Sabadell", "Bankinter", "Openbank", "Unicaja", "Abanca", "Kutxabank", "ING",
     "Revolut", "N26", "PayPal",
   ],
+  autostart: false,
 };
 
 /** Rectángulo en px lógicos relativo a la ventana. */
