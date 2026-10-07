@@ -1,7 +1,7 @@
 # CLAUDE.md — Tico
 
 Guía para Claude Code (y para Victor) sobre cómo está montado el proyecto.
-**Actualízala al terminar cada fase.**
+**Actualízala al terminar cada fase o cambio grande.**
 
 ## Qué es
 Tico es una "isla dinámica" de escritorio para Windows y macOS: al llevar el ratón al
@@ -11,76 +11,113 @@ usuario lo pide, mira la pantalla para ayudar. El documento de diseño completo 
 
 ## Cómo trabajamos
 - Hablar en castellano y explicar cada decisión técnica en 2-3 frases sencillas.
-- Fase a fase: al terminar una, parar, dar instrucciones exactas de prueba y esperar el OK.
 - Commits pequeños con Conventional Commits (`feat:`, `fix:`, `chore:`, `docs:`, `ci:`…).
 - 0 € en servicios: sin backends propios, sin cuentas, sin telemetría.
 - Prohibido copiar código, sonidos o la mascota de coucou (Mochi). Tico es un diseño propio.
 
 ## Fase actual
-**Fase 0 — Preparación: terminada (pendiente de que Victor la pruebe en Windows).**
-Siguiente: Fase 1 — la isla.
+**Fases 0-6 implementadas** (Victor pidió hacerlas todas seguidas y corregir después).
+Pendiente: que Victor pruebe en Windows (y en un Mac si puede) y corregir lo que falle.
 
 | Fase | Contenido | Estado |
 | ---- | --------- | ------ |
 | 0 | Proyecto, git, CLAUDE.md, README, licencias, CI | ✅ |
-| 1 | Isla: ventana transparente, hover, estados, click-through | ⏳ |
-| 2 | Tico con todas sus expresiones | — |
-| 3 | Chat: proveedores, streaming, claves en el llavero | — |
-| 4 | Visión: captura, miniatura, privacidad | — |
-| 5 | Ajustes, idiomas, autoarranque | — |
-| 6 | Instaladores (NSIS y .dmg) con GitHub Actions | — |
+| 1 | Isla: ventana transparente, hover, estados, click-through, atajo | ✅ (sin probar en real) |
+| 2 | Tico con 8 expresiones + `playground.html` | ✅ |
+| 3 | Chat: Anthropic/OpenAI/Gemini/Ollama, streaming, llavero | ✅ (sin probar con clave real) |
+| 4 | Visión: captura, miniatura, apps bloqueadas, permiso macOS | ✅ (sin probar en real) |
+| 5 | Ajustes, idiomas, autoarranque, sonidos, bandeja | ✅ |
+| 6 | Instaladores NSIS y .dmg con GitHub Actions | ✅ |
+
+Lo que solo se puede verificar en un equipo real (CI solo compila y pasa tests):
+- Que la ventana transparente y el click-through se comporten bien en Windows y macOS.
+- macOS: que la isla quede por encima de la barra de menús y que el ancho del notch encaje.
+- macOS 15+: que `contentProtected` excluya de verdad la isla de la captura.
+- Que el foco del teclado llegue al cuadro de texto al abrir con el atajo.
 
 ## Stack
 - Tauri 2 (Rust) + Vite 8 + React 19 + TypeScript 6 (estricto).
 - TypeScript se queda en 6.0 porque typescript-eslint aún no soporta TS 7.
+- Crates: `xcap` (captura), `keyring` 3 (llavero), `reqwest` (HTTP con streaming),
+  `image` (JPEG), `tauri-nspanel` (macOS), plugins `global-shortcut`, `autostart`,
+  `single-instance`.
 - Tests: Vitest (frontend) y `cargo test` (Rust). Lint: ESLint + Clippy.
 
 ## Arquitectura
 ```
-src/                 Interfaz web (React): dibuja la isla y a Tico
-  main.tsx           Punto de entrada
-  App.tsx            Pantalla de prueba de la Fase 0
-src-tauri/           Núcleo Rust: lo que el navegador no puede hacer
-  src/main.rs        Solo llama a tico_lib::run()
-  src/lib.rs         Arranque, plugins y registro de comandos
-  src/error.rs       AppError: error tipado que devuelven todos los comandos
-  tauri.conf.json    Ventanas, permisos y empaquetado
-  capabilities/      Qué APIs de Tauri puede usar cada ventana
-assets/tico.svg      Diseño original de Tico (fuente de los iconos)
+index.html / settings.html / playground.html   Una página por ventana (Vite multipágina)
+src/
+  entries/           Punto de entrada de cada ventana
+  island/            La isla: máquina de estados, cápsula, chat, captura
+    machine.ts       Reducer puro hidden/peek/compact/expanded (con tests)
+    sizes.ts         Tamaños S/M/L y rectángulo para el click-through
+    IslandApp.tsx    Une sensores de Rust, chat, captura, expresiones y sonidos
+    useChat.ts       Estado del chat y streaming por Channel de Tauri
+  robot/             Tico: Tico.tsx (SVG + bucle rAF), expressions.ts, gaze.ts, Playground
+  settings/          Ventana de ajustes (se guarda sola) y grabación de atajos
+  lib/               spring.ts (muelle propio), tauri.ts (API tipada), sound.ts (Web Audio)
+  i18n/              es.json (referencia), ca.json, en.json
+src-tauri/src/
+  lib.rs             Arranque, plugins y registro de comandos
+  island.rs          Hilo sensor ~60 Hz: hover del borde, click-through, cursor, multimonitor
+  capture.rs         Captura con xcap, apps bloqueadas, JPEG 1568 px, solo en memoria
+  chat.rs            Comandos del chat (streaming, cancelar, borrar, probar conexión)
+  ai/                Trait Provider + anthropic, openai, gemini, ollama y lector de streaming
+  secrets.rs         Claves en el llavero (nunca salen hacia el frontend)
+  settings.rs        Ajustes en JSON en la carpeta de config del sistema
+  shortcuts.rs       Atajos globales (abrir y capturar)
+  tray.rs            Menú de la bandeja/barra de menús traducido
+  platform/macos.rs  NSPanel no activable por encima de la barra de menús y notch
+.github/workflows/   ci.yml (comprobaciones) y release.yml (instaladores)
 ```
-Estructura prevista para las siguientes fases: `island.rs`, `capture.rs`, `ai/`,
-`secrets.rs`, `settings.rs` en Rust; `src/island/`, `src/robot/`, `src/settings/`,
-`src/i18n/` y `src/lib/` (utilidades compartidas como `spring.ts`) en el frontend.
+
+### Flujo de la isla
+1. Rust (`island.rs`) mira el cursor cada 16 ms. Si está 150 ms en los 3 px superiores
+   de la zona de activación, coloca la ventana en ese monitor y emite `island://edge-hover`.
+2. React pasa a `peek`; con el cursor encima, a `compact`; con clic, a `expanded`.
+3. React manda a Rust el rectángulo de la cápsula (`island_set_rect`). Rust activa el
+   click-through (`set_ignore_cursor_events`) cuando el cursor está fuera y emite
+   `island://pointer` al entrar o salir.
+4. Si el cursor sale y no hay conversación, React se oculta tras `hideDelayMs`.
 
 ## Comandos
 | Comando | Qué hace |
 | ------- | -------- |
 | `npm install` | Instala dependencias del frontend |
 | `npm run tauri dev` | Arranca la app en modo desarrollo |
-| `npm run typecheck` | Comprueba tipos de TypeScript |
-| `npm run lint` | ESLint |
-| `npm test` | Tests de Vitest |
-| `npm run build` | Compila el frontend a `dist/` |
-| `npm run tauri build` | Genera el instalador |
+| `npm run dev` | Solo el frontend (isla simulada y `playground.html` en el navegador) |
+| `npm run typecheck` / `npm run lint` / `npm test` | Tipos, ESLint y Vitest |
+| `npm run tauri build` | Genera el instalador del sistema actual |
 | `cd src-tauri && cargo clippy --all-targets -- -D warnings` | Lint de Rust |
-| `cd src-tauri && cargo test` | Tests de Rust |
+| `cd src-tauri && cargo test` | Tests de Rust (incluye un servidor HTTP falso para el streaming) |
 | `npx tauri icon assets/tico.svg` | Regenera los iconos (borra luego `icons/android` e `icons/ios`) |
+| Actions → Instaladores → Run workflow | `.exe` y `.dmg` como artifacts |
 
 ## Decisiones tomadas
 1. **Proyecto en la raíz del repo** (no en `tico/`): el repo es el proyecto.
 2. **Tauri 2 estable**, no la alfa de Tauri 3.
-3. **`lib.rs` + `main.rs`**: lo exige el soporte móvil (Android en la Fase 3).
-4. **Errores tipados** con `thiserror`; se serializan como texto para el frontend.
-   Nada de `unwrap()` fuera de tests.
-5. **Ventana de tamaño fijo con la cápsula animada dentro** (Fase 1): redimensionar
-   ventanas nativas a 60 fps da tirones en Windows.
-6. **Click-through desde Rust** (Fase 1): Rust compara el cursor con el rectángulo de la
-   cápsula y activa/desactiva `set_ignore_cursor_events`.
-7. **Máquina de estados de la isla en el frontend** (reducer puro y testeable); Rust solo
-   emite eventos de sensores (hover en el borde, cursor dentro/fuera).
+3. **`lib.rs` + `main.rs`**: lo exige el soporte móvil (Android en el futuro).
+4. **Errores tipados** con `thiserror`; viajan al frontend como `{ kind, message }` para
+   traducirlos. Nada de `unwrap()` fuera de tests.
+5. **Ventana de tamaño fijo con la cápsula animada dentro**: redimensionar ventanas
+   nativas a 60 fps da tirones en Windows.
+6. **Click-through desde Rust**, comparando el cursor con el rectángulo de la cápsula.
+7. **Máquina de estados en el frontend** (reducer puro); Rust solo emite sensores.
 8. **`spring.ts` en `src/lib/`**: lo comparten la isla y Tico.
 9. Identificador de la app: `com.victorsalmeron.tico`.
-10. **CI en Windows y macOS** desde la Fase 0: así se sabe que compila en Mac sin tener Mac.
+10. **CI en Windows y macOS** desde la Fase 0.
+11. **Tico se anima escribiendo atributos SVG en un bucle rAF**, no con estado de React:
+    así no hay re-render a 60 fps.
+12. **Streaming con `Channel` de Tauri** (no eventos globales): cada envío tiene su canal.
+13. **Solo se reenvía la última captura** en el historial: las anteriores gastarían tokens.
+14. **Modelo por defecto `claude-haiku-4-5`** (el que propuso Victor por coste), editable;
+    "Probar conexión" lista los modelos reales de cada proveedor.
+15. **Apps bloqueadas por palabra completa** (así "ING" no bloquea "Settings").
+16. **La isla tiene `contentProtected`**: no aparece en capturas (tampoco en las tuyas).
+17. **Ajustes de texto se guardan al salir del campo**, el resto al momento.
+18. **Instalador de Windows por usuario** (sin admin) y **.dmg universal** firmado ad hoc.
+    El NSIS de Tauri no tiene catalán: el instalador va en castellano o inglés.
+19. **Copyright a nombre de "Victor"** (como en `LICENSE`).
 
 ## Licencias
 Código: MIT (`LICENSE`). Tico, su nombre, su diseño y sus sonidos: todos los derechos
