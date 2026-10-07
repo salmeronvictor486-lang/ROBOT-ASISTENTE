@@ -186,3 +186,8 @@ body {
   opacity: 0.45;
   cursor: default;
 }
+
+.tico-slot {
+  display: inline-flex;
+  flex: none;
+}

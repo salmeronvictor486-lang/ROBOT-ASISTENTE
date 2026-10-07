@@ -17,6 +17,13 @@ export default defineConfig({
     watch: { ignored: ["**/src-tauri/**"] },
   },
   build: {
+    // Una página por ventana: la isla, los ajustes y la página de pruebas de Tico.
+    rollupOptions: {
+      input: {
+        island: "index.html",
+        playground: "playground.html",
+      },
+    },
     // WebView2 (Windows) es Chromium; WKWebView (macOS) es Safari.
     target: process.env.TAURI_ENV_PLATFORM === "windows" ? "chrome105" : "safari15",
     minify: !debug,
