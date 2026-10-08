@@ -24,20 +24,43 @@ chatea contigo y, solo cuando tú se lo pides, mira tu pantalla para ayudarte.
 
 Sin telemetría y sin cuentas.
 
-## Instalar (sin compilar)
+## Descargar
 
-Los instaladores se generan con GitHub Actions: pestaña **Actions → Instaladores →
-Run workflow**. Al terminar, descárgalos en **Artifacts**:
+Pulsa el botón de tu sistema y la descarga empieza sola:
 
-| Artifact | Para |
-| -------- | ---- |
-| `Tico-Windows-64bits` | Windows 10/11 de 64 bits con procesador Intel o AMD (lo más común) |
-| `Tico-Windows-32bits` | Windows de 32 bits y Windows 10 en procesador ARM |
-| `Tico-macOS` | Mac con Intel o Apple Silicon |
+<p align="center">
+  <a href="https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Windows-x64-setup.exe"><img alt="Windows 64 bits (.exe)" src="https://img.shields.io/badge/Windows%2064%20bits-.exe-0078D4?style=for-the-badge&logo=windows&logoColor=white"></a>
+  <a href="https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Windows-x86-setup.exe"><img alt="Windows 32 bits / ARM (.exe)" src="https://img.shields.io/badge/Windows%2032%20bits%20%2F%20ARM-.exe-0078D4?style=for-the-badge&logo=windows&logoColor=white"></a>
+  <a href="https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-macOS.dmg"><img alt="macOS (.dmg)" src="https://img.shields.io/badge/macOS-.dmg-111111?style=for-the-badge&logo=apple&logoColor=white"></a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Windows-x64-portable.zip"><img alt="Windows 64 bits portable (.zip)" src="https://img.shields.io/badge/Windows%2064%20bits-portable%20.zip-3DD6D0?style=for-the-badge&logo=windows&logoColor=black"></a>
+  <a href="https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Windows-x86-portable.zip"><img alt="Windows 32 bits portable (.zip)" src="https://img.shields.io/badge/Windows%2032%20bits-portable%20.zip-3DD6D0?style=for-the-badge&logo=windows&logoColor=black"></a>
+  <a href="https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/archive/HEAD.zip"><img alt="Código fuente (.zip)" src="https://img.shields.io/badge/C%C3%B3digo%20fuente-.zip-555555?style=for-the-badge&logo=github&logoColor=white"></a>
+</p>
+
+| Archivo | Para |
+| ------- | ---- |
+| [`Tico-Windows-x64-setup.exe`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Windows-x64-setup.exe) | Windows 10/11 de 64 bits con Intel o AMD (lo más común) |
+| [`Tico-Windows-x86-setup.exe`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Windows-x86-setup.exe) | Windows de 32 bits y Windows 10 con procesador ARM |
+| [`Tico-macOS.dmg`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-macOS.dmg) | Mac con Intel o Apple Silicon |
+| [`Tico-Windows-x64-portable.zip`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Windows-x64-portable.zip) | Igual que el `.exe` de 64 bits, pero sin instalar: descomprime y abre `Tico.exe` |
+| [`Tico-Windows-x86-portable.zip`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Windows-x86-portable.zip) | Igual que el de 32 bits, sin instalar |
+| [Código fuente (`.zip`)](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/archive/HEAD.zip) | Para compilarlo tú (ver más abajo) |
 
 ¿Cuál es el tuyo? En Windows: **Configuración → Sistema → Acerca de → Tipo de sistema**.
 Si al abrir el de 64 bits sale "No se puede ejecutar esta aplicación en el equipo",
 usa el de 32 bits.
+
+- Los botones siempre bajan **la última versión publicada** (en
+  [Releases](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases) están todas).
+- La versión portable necesita **WebView2**: Windows 11 ya lo trae; en Windows 10, si no
+  arranca, usa el instalador (lo instala solo) o descárgalo de Microsoft.
+- Mientras el repositorio sea **privado**, los enlaces solo funcionan si has iniciado
+  sesión en GitHub con una cuenta que tenga acceso. Si lo haces público, funcionarán
+  para cualquiera.
+- Para publicar una versión nueva: **Actions → Instaladores → Run workflow**.
 
 Como la app **no está firmada** (firmar cuesta dinero), el sistema avisará la primera vez:
 

@@ -91,7 +91,7 @@ src-tauri/src/
 | `cd src-tauri && cargo clippy --all-targets -- -D warnings` | Lint de Rust |
 | `cd src-tauri && cargo test` | Tests de Rust (incluye un servidor HTTP falso para el streaming) |
 | `npx tauri icon assets/tico.svg` | Regenera los iconos (borra luego `icons/android` e `icons/ios`) |
-| Actions → Instaladores → Run workflow | `.exe` (64 y 32 bits) y `.dmg` como artifacts |
+| Actions → Instaladores → Run workflow | Publica la Release `v<versión>` con `.exe`, `.zip` portable y `.dmg` |
 
 ## Decisiones tomadas
 1. **Proyecto en la raíz del repo** (no en `tico/`): el repo es el proyecto.
@@ -121,6 +121,13 @@ src-tauri/src/
     sirve para Windows de 32 bits y para Windows 10 ARM (que no emula x64).
     El NSIS de Tauri no tiene catalán: el instalador va en castellano o inglés.
 19. **Copyright a nombre de "Victor"** (como en `LICENSE`).
+20. **Descargas directas desde el README**: el workflow publica una Release con nombres
+    de archivo fijos (sin versión), así `releases/latest/download/<archivo>` siempre baja
+    la última. Para una versión nueva, sube `version` en `package.json`,
+    `src-tauri/Cargo.toml` y `src-tauri/tauri.conf.json` antes de lanzarlo.
+21. **Commits con el correo privado de GitHub**
+    (`237393936+salmeronvictor486-lang@users.noreply.github.com`): la cuenta bloquea los
+    push que exponen el Gmail.
 
 ## Licencias
 Código: MIT (`LICENSE`). Tico, su nombre, su diseño y sus sonidos: todos los derechos
