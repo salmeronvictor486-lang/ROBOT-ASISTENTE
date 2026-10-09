@@ -4,7 +4,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use crate::ai::{ChatMessage, ImageData};
-use crate::island::IslandShared;
+use crate::island::{IslandShared, NotchScreen};
 use crate::settings::Settings;
 
 /// Estado global de la app, accesible desde comandos y hilos con `app.state::<AppState>()`.
@@ -12,8 +12,8 @@ pub struct AppState {
     pub settings: Mutex<Settings>,
     pub settings_path: PathBuf,
     pub island: Mutex<IslandShared>,
-    /// Ancho del notch (solo MacBook con notch), detectado al arrancar.
-    pub notch_width: Option<f64>,
+    /// Pantallas con notch (solo MacBook), detectadas al arrancar.
+    pub notch_screens: Vec<NotchScreen>,
     /// Historial de la conversación (solo en memoria).
     pub chat: Mutex<Vec<ChatMessage>>,
     /// Captura hecha y esperando a enviarse (solo en memoria, nunca en disco).
@@ -24,12 +24,12 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(settings: Settings, settings_path: PathBuf, notch_width: Option<f64>) -> Self {
+    pub fn new(settings: Settings, settings_path: PathBuf, notch_screens: Vec<NotchScreen>) -> Self {
         Self {
             settings: Mutex::new(settings),
             settings_path,
             island: Mutex::new(IslandShared::default()),
-            notch_width,
+            notch_screens,
             chat: Mutex::new(Vec::new()),
             pending_capture: Mutex::new(None),
             chat_generation: AtomicU64::new(0),

@@ -5,7 +5,7 @@ use tauri_nspanel::objc2::MainThreadMarker;
 use tauri_nspanel::objc2_app_kit::{NSScreen, NSWindowStyleMask};
 use tauri_nspanel::{CollectionBehavior, ManagerExt, PanelLevel, WebviewWindowExt};
 
-use crate::island::ISLAND_LABEL;
+use crate::island::{Notch, NotchScreen, ISLAND_LABEL};
 use panel::IslandPanel;
 
 /// El macro importa sus propios nombres (p. ej. `MainThreadMarker`): lo aislamos en un módulo.
@@ -46,18 +46,29 @@ pub fn focus_island(app: &AppHandle) {
     }
 }
 
-/// Ancho del notch de la pantalla principal (px lógicos), si tiene.
+/// Pantallas con notch (MacBook Pro/Air recientes), en puntos (= px lógicos de Tauri).
 #[allow(unused_unsafe)]
-pub fn notch_width() -> Option<f64> {
-    let mtm = MainThreadMarker::new()?;
-    let screen = NSScreen::mainScreen(mtm)?;
-    let insets = unsafe { screen.safeAreaInsets() };
-    if insets.top <= 0.0 {
-        return None;
-    }
-    let frame = screen.frame();
-    let left = unsafe { screen.auxiliaryTopLeftArea() };
-    let right = unsafe { screen.auxiliaryTopRightArea() };
-    let width = frame.size.width - left.size.width - right.size.width;
-    (width > 0.0).then_some(width)
+pub fn notch_screens() -> Vec<NotchScreen> {
+    let Some(mtm) = MainThreadMarker::new() else {
+        return Vec::new();
+    };
+    let screens = NSScreen::screens(mtm);
+    screens
+        .iter()
+        .filter_map(|screen| {
+            let insets = unsafe { screen.safeAreaInsets() };
+            if insets.top <= 0.0 {
+                return None;
+            }
+            let frame = screen.frame();
+            let left = unsafe { screen.auxiliaryTopLeftArea() };
+            let right = unsafe { screen.auxiliaryTopRightArea() };
+            let width = frame.size.width - left.size.width - right.size.width;
+            (width > 0.0).then_some(NotchScreen {
+                screen_width: frame.size.width,
+                screen_height: frame.size.height,
+                notch: Notch { width, height: insets.top },
+            })
+        })
+        .collect()
 }

@@ -77,11 +77,11 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let settings = Settings::load(&settings_path);
 
     #[cfg(target_os = "macos")]
-    let notch_width = platform::macos::notch_width();
+    let notch_screens = platform::macos::notch_screens();
     #[cfg(not(target_os = "macos"))]
-    let notch_width = None;
+    let notch_screens = Vec::new();
 
-    app.manage(AppState::new(settings.clone(), settings_path, notch_width));
+    app.manage(AppState::new(settings.clone(), settings_path, notch_screens));
     let handle = app.handle().clone();
 
     if let Some(window) = app.get_webview_window(ISLAND_LABEL) {

@@ -80,9 +80,15 @@ export interface Rect {
   height: number;
 }
 
+/** Notch del MacBook en px lógicos. */
+export interface NotchInfo {
+  width: number;
+  height: number;
+}
+
 export interface IslandInfo {
   platform: string;
-  notchWidth: number | null;
+  notch: NotchInfo | null;
 }
 
 /** Error que devuelven los comandos de Rust (`AppError`). */

@@ -22,6 +22,8 @@ const EXPANDED_H: f64 = 320.0;
 pub const SIDE_MARGIN: f64 = 40.0;
 /// Hueco inferior para la sombra.
 const BOTTOM_MARGIN: f64 = 56.0;
+/// Espacio extra arriba para que, con notch, el contenido quepa debajo de él.
+const NOTCH_ALLOWANCE: f64 = 44.0;
 /// Alto (px lógicos) de la franja del borde superior que despierta la isla.
 const EDGE_HEIGHT: f64 = 3.0;
 const TICK: Duration = Duration::from_millis(16);
@@ -63,6 +65,30 @@ impl From<&Monitor> for MonitorGeom {
     }
 }
 
+/// Tamaño del notch en px lógicos.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize)]
+pub struct Notch {
+    pub width: f64,
+    pub height: f64,
+}
+
+/// Una pantalla con notch: su tamaño lógico sirve para reconocerla entre los monitores.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct NotchScreen {
+    pub screen_width: f64,
+    pub screen_height: f64,
+    pub notch: Notch,
+}
+
+/// Busca el notch del monitor comparando su tamaño lógico con las pantallas con notch.
+pub fn notch_for(monitor: MonitorGeom, screens: &[NotchScreen]) -> Option<Notch> {
+    let (w, h) = (monitor.width / monitor.scale, monitor.height / monitor.scale);
+    screens
+        .iter()
+        .find(|s| (s.screen_width - w).abs() < 2.0 && (s.screen_height - h).abs() < 2.0)
+        .map(|s| s.notch)
+}
+
 /// Dónde va la ventana y qué zona del borde la despierta (todo en px físicos).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Layout {
@@ -70,13 +96,25 @@ pub struct Layout {
     pub window_y: f64,
     pub window_size: (f64, f64),
     pub zone: Rect,
+    /// Con notch, pasar el ratón por el propio notch también despierta la isla.
+    pub notch_zone: Option<Rect>,
+    pub notch: Option<Notch>,
     pub scale: f64,
+}
+
+impl Layout {
+    pub fn wakes(&self, x: f64, y: f64) -> bool {
+        self.zone.contains(x, y) || self.notch_zone.is_some_and(|z| z.contains(x, y))
+    }
 }
 
 /// Tamaño lógico de la ventana: el panel expandido más los márgenes de la sombra.
 pub fn window_size(size: IslandSize) -> (f64, f64) {
     let s = size.scale();
-    (EXPANDED_W * s + SIDE_MARGIN * 2.0, EXPANDED_H * s + BOTTOM_MARGIN)
+    (
+        EXPANDED_W * s + SIDE_MARGIN * 2.0,
+        EXPANDED_H * s + BOTTOM_MARGIN + NOTCH_ALLOWANCE,
+    )
 }
 
 pub fn compute_layout(
@@ -84,8 +122,11 @@ pub fn compute_layout(
     size: IslandSize,
     position: IslandPosition,
     activation_width: f64,
+    notch: Option<Notch>,
 ) -> Layout {
     let (w, h) = window_size(size);
+    // El notch está siempre en el centro: con notch, la isla nace de él.
+    let position = if notch.is_some() { IslandPosition::Center } else { position };
     let win_w = w * monitor.scale;
     let zone_w = (activation_width * monitor.scale).min(monitor.width);
     let (window_x, zone_x) = match position {
@@ -109,6 +150,13 @@ pub fn compute_layout(
             width: zone_w,
             height: EDGE_HEIGHT * monitor.scale,
         },
+        notch_zone: notch.map(|n| Rect {
+            x: monitor.x + (monitor.width - n.width * monitor.scale) / 2.0,
+            y: monitor.y,
+            width: n.width * monitor.scale,
+            height: n.height * monitor.scale,
+        }),
+        notch,
         scale: monitor.scale,
     }
 }
@@ -182,6 +230,10 @@ pub fn apply_layout(app: &AppHandle, layout: Layout) -> AppResult<()> {
         window.set_size(LogicalSize::new(w, h))?;
         window.set_position(PhysicalPosition::new(layout.window_x, layout.window_y))?;
     }
+    let notch_changed = lock(&state.island).layout.map(|l| l.notch) != Some(layout.notch);
+    if notch_changed {
+        let _ = app.emit_to(ISLAND_LABEL, "island://notch", layout.notch);
+    }
     let mut island = lock(&state.island);
     island.layout = Some(layout);
     island.window_origin = (layout.window_x, layout.window_y);
@@ -197,11 +249,14 @@ pub fn layout_for_point(app: &AppHandle, settings: &Settings, x: f64, y: f64) ->
         None
     }
     .or_else(|| app.primary_monitor().ok().flatten())?;
+    let geom = MonitorGeom::from(&monitor);
+    let notch = notch_for(geom, &app.state::<AppState>().notch_screens);
     Some(compute_layout(
-        MonitorGeom::from(&monitor),
+        geom,
         settings.island_size,
         settings.island_position,
         f64::from(settings.activation_width),
+        notch,
     ))
 }
 
@@ -301,7 +356,7 @@ fn tracker_loop(app: &AppHandle) {
             let settings = lock(&state.settings).clone();
             match layout_for_point(app, &settings, cursor.x, cursor.y) {
                 Some(layout) => {
-                    let in_zone = layout.zone.contains(cursor.x, cursor.y);
+                    let in_zone = layout.wakes(cursor.x, cursor.y);
                     let dwell = Duration::from_millis(settings.show_delay_ms);
                     if detector.update(in_zone, Instant::now(), dwell)
                         && !(settings.hide_on_fullscreen && fullscreen_app_active())
@@ -358,15 +413,15 @@ pub fn island_focus(app: AppHandle) {
 #[serde(rename_all = "camelCase")]
 pub struct IslandInfo {
     pub platform: &'static str,
-    /// Ancho del notch del MacBook en px lógicos, si lo hay.
-    pub notch_width: Option<f64>,
+    /// Notch del monitor donde está la isla (px lógicos), si lo hay.
+    pub notch: Option<Notch>,
 }
 
 #[tauri::command]
 pub fn island_info(state: State<'_, AppState>) -> IslandInfo {
     IslandInfo {
         platform: std::env::consts::OS,
-        notch_width: state.notch_width,
+        notch: lock(&state.island).layout.and_then(|l| l.notch),
     }
 }
 
@@ -384,7 +439,7 @@ mod tests {
 
     #[test]
     fn center_layout_is_centered() {
-        let l = compute_layout(MON, IslandSize::M, IslandPosition::Center, 400.0);
+        let l = compute_layout(MON, IslandSize::M, IslandPosition::Center, 400.0, None);
         let (w, _) = window_size(IslandSize::M);
         assert_eq!(l.window_x, ((1920.0 - w) / 2.0).round());
         assert_eq!(l.zone.x, 760.0);
@@ -394,7 +449,7 @@ mod tests {
 
     #[test]
     fn right_layout_touches_right_edge() {
-        let l = compute_layout(MON, IslandSize::L, IslandPosition::Right, 400.0);
+        let l = compute_layout(MON, IslandSize::L, IslandPosition::Right, 400.0, None);
         let (w, _) = window_size(IslandSize::L);
         assert_eq!(l.window_x, (1920.0 - w).round());
         assert_eq!(l.zone.x + l.zone.width, 1920.0);
@@ -409,11 +464,38 @@ mod tests {
             height: 1800.0,
             scale: 2.0,
         };
-        let l = compute_layout(mon, IslandSize::M, IslandPosition::Center, 400.0);
+        let l = compute_layout(mon, IslandSize::M, IslandPosition::Center, 400.0, None);
         assert_eq!(l.zone.width, 800.0);
         assert_eq!(l.zone.height, 6.0);
         assert_eq!(l.window_y, -200.0);
         assert!(l.zone.contains(1920.0 + 1440.0, -199.0));
+    }
+
+    #[test]
+    fn notch_forces_center_and_wakes_on_notch() {
+        let mon = MonitorGeom {
+            x: 0.0,
+            y: 0.0,
+            width: 3024.0,
+            height: 1964.0,
+            scale: 2.0,
+        };
+        let screens = [NotchScreen {
+            screen_width: 1512.0,
+            screen_height: 982.0,
+            notch: Notch { width: 185.0, height: 32.0 },
+        }];
+        let notch = notch_for(mon, &screens);
+        assert_eq!(notch, Some(Notch { width: 185.0, height: 32.0 }));
+        let l = compute_layout(mon, IslandSize::M, IslandPosition::Left, 400.0, notch);
+        let (w, _) = window_size(IslandSize::M);
+        assert_eq!(l.window_x, ((3024.0 - w * 2.0) / 2.0).round());
+        // Dentro del notch (a media altura) despierta; debajo del notch no.
+        assert!(l.wakes(1512.0, 40.0));
+        assert!(!l.wakes(1512.0, 70.0));
+        // Un monitor externo sin notch no lo hereda.
+        let external = MonitorGeom { width: 3840.0, height: 2160.0, ..mon };
+        assert_eq!(notch_for(external, &screens), None);
     }
 
     #[test]

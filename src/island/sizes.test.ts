@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { capsuleGeometry, capsuleHitRect, capsuleX } from "./sizes";
+import { capsuleGeometry, capsuleHitRect, capsuleX, NOTCH_EAR } from "./sizes";
+
+const NOTCH = { width: 185, height: 32 };
 
 describe("tamaños de la isla", () => {
   it("escala con S/M/L", () => {
@@ -8,9 +10,31 @@ describe("tamaños de la isla", () => {
     expect(capsuleGeometry("compact", "s").height).toBeCloseTo(40.8);
   });
 
-  it("en peek usa el ancho del notch si lo hay", () => {
-    expect(capsuleGeometry("peek", "m", 185).width).toBe(185);
-    expect(capsuleGeometry("compact", "m", 185).width).toBe(360);
+  it("con notch, peek tiene orejas a los lados del notch", () => {
+    const g = capsuleGeometry("peek", "m", NOTCH);
+    expect(g.width).toBe(185 + NOTCH_EAR * 2);
+    expect(g.height).toBe(32);
+    expect(g.flushTop).toBe(true);
+  });
+
+  it("con notch, el contenido empieza debajo del notch", () => {
+    for (const state of ["compact", "expanded"] as const) {
+      const g = capsuleGeometry(state, "m", NOTCH);
+      expect(g.contentTop).toBe(32);
+      expect(g.height).toBeGreaterThan(32 + 30);
+      expect(g.width).toBeGreaterThan(NOTCH.width + 150);
+    }
+  });
+
+  it("oculta con notch es un pelín más pequeña que el notch", () => {
+    const g = capsuleGeometry("hidden", "m", NOTCH);
+    expect(g.width).toBeLessThan(NOTCH.width);
+    expect(g.height).toBeLessThan(NOTCH.height);
+  });
+
+  it("sin notch no reserva espacio arriba", () => {
+    expect(capsuleGeometry("expanded", "m").contentTop).toBe(0);
+    expect(capsuleGeometry("expanded", "m").flushTop).toBe(false);
   });
 
   it("la cápsula se alinea según la posición", () => {

@@ -40,7 +40,9 @@ export function Capsule({ geometry, x, top, visible, capturing, onClick, childre
       if (!el) return;
       el.style.width = `${s.width.value}px`;
       el.style.height = `${Math.max(s.height.value, 0)}px`;
-      el.style.borderRadius = `${Math.max(s.radius.value, 0)}px`;
+      const r = Math.max(s.radius.value, 0);
+      // Con notch, la isla cuelga del borde: solo se redondean las esquinas de abajo.
+      el.style.borderRadius = geometry.flushTop ? `0 0 ${r}px ${r}px` : `${r}px`;
       el.style.transform = `translateX(${s.x.value}px)`;
     };
 
@@ -61,12 +63,14 @@ export function Capsule({ geometry, x, top, visible, capturing, onClick, childre
     };
     frame = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(frame);
-  }, [geometry.width, geometry.height, geometry.radius, x, reducedMotion]);
+  }, [geometry.width, geometry.height, geometry.radius, geometry.flushTop, x, reducedMotion]);
 
   return (
     <div
       ref={ref}
-      className={`capsule${visible ? " is-visible" : ""}${capturing ? " is-capturing" : ""}`}
+      className={`capsule${visible ? " is-visible" : ""}${capturing ? " is-capturing" : ""}${
+        geometry.flushTop ? " is-notch" : ""
+      }`}
       style={{ top }}
       onClick={onClick}
     >
