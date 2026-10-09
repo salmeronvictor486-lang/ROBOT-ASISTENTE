@@ -3,11 +3,11 @@
 use serde_json::{json, Value};
 
 use super::stream::{for_each_line, sse_data, Flow};
-use super::{check, parse_json, ChatRequest, Delta, Provider, Role, TokenSink};
+use super::{check, connection_error, parse_json, ChatRequest, Delta, Provider, Role, TokenSink};
 use crate::error::{AppError, AppResult};
 
 const API: &str = "https://generativelanguage.googleapis.com/v1beta";
-const ID: &str = "gemini";
+const ID: &str = "Gemini";
 
 pub struct Gemini {
     pub api_key: String,
@@ -26,7 +26,7 @@ pub fn build_body(request: &ChatRequest) -> Value {
         .map(|(i, m)| match m.role {
             Role::User => {
                 let mut parts = Vec::new();
-                if let Some(image) = request.image_for(i) {
+                for image in request.images_for(i) {
                     parts.push(json!({
                         "inline_data": { "mime_type": image.media_type, "data": image.base64 },
                     }));
@@ -40,14 +40,18 @@ pub fn build_body(request: &ChatRequest) -> Value {
     json!({
         "systemInstruction": { "parts": [{ "text": request.system }] },
         "contents": contents,
-        "generationConfig": { "maxOutputTokens": request.max_tokens },
+        // Los Gemini 2.5+ "piensan" antes de responder y ese razonamiento cuenta en el
+        // límite: con poco margen la respuesta saldría cortada o vacía.
+        "generationConfig": { "maxOutputTokens": request.max_tokens.max(2048) * 4 },
     })
 }
 
 pub fn parse_event(data: &str) -> AppResult<Delta> {
     let v = parse_json(ID, data)?;
-    if let Some(message) = v["error"]["message"].as_str() {
-        return Err(AppError::Provider(format!("Gemini: {message}")));
+    if v["error"].is_object() {
+        // Error a mitad de la respuesta: lo tratamos igual que un error HTTP.
+        let code = v["error"]["code"].as_u64().unwrap_or(500) as u16;
+        return Err(super::error_for_status(ID, code, data));
     }
     if v["promptFeedback"]["blockReason"].is_string() {
         return Err(AppError::Refused);
@@ -79,7 +83,8 @@ impl Provider for Gemini {
             .header("x-goog-api-key", &self.api_key)
             .json(&build_body(request))
             .send()
-            .await?;
+            .await
+            .map_err(|e| connection_error(ID, false, e))?;
         let response = check(ID, response).await?;
         for_each_line(response, |line| {
             let Some(data) = sse_data(line) else {
@@ -99,7 +104,8 @@ impl Provider for Gemini {
             .get(format!("{API}/models?pageSize=200"))
             .header("x-goog-api-key", &self.api_key)
             .send()
-            .await?;
+            .await
+            .map_err(|e| connection_error(ID, false, e))?;
         let body: Value = check(ID, response).await?.json().await?;
         let models = body["models"]
             .as_array()
@@ -129,7 +135,10 @@ mod tests {
         let req = ChatRequest {
             model: "models/gemini-2.5-flash".into(),
             system: "sys".into(),
-            messages: vec![ChatMessage::user("hola".into(), None), ChatMessage::assistant("¡hola!".into())],
+            messages: vec![
+                ChatMessage::user("hola".into(), String::new(), Vec::new()),
+                ChatMessage::assistant("¡hola!".into()),
+            ],
             max_tokens: 100,
         };
         let body = build_body(&req);
@@ -142,6 +151,8 @@ mod tests {
     fn parses_stream_events() {
         let chunk = r#"{"candidates":[{"content":{"parts":[{"text":"Ho"},{"text":"la"}],"role":"model"}}]}"#;
         assert_eq!(parse_event(chunk).unwrap(), Delta::Text("Hola".into()));
+        let busy = r#"{"error":{"code":503,"message":"The model is overloaded.","status":"UNAVAILABLE"}}"#;
+        assert!(matches!(parse_event(busy), Err(AppError::Overloaded(_))));
         let blocked = r#"{"promptFeedback":{"blockReason":"SAFETY"}}"#;
         assert!(matches!(parse_event(blocked), Err(AppError::Refused)));
     }

@@ -3,12 +3,12 @@
 use serde_json::{json, Value};
 
 use super::stream::{for_each_line, sse_data, Flow};
-use super::{check, parse_json, ChatRequest, Delta, Provider, Role, TokenSink};
+use super::{check, connection_error, parse_json, ChatRequest, Delta, Provider, Role, TokenSink};
 use crate::error::{AppError, AppResult};
 
 const API: &str = "https://api.anthropic.com/v1";
 const VERSION: &str = "2023-06-01";
-const ID: &str = "anthropic";
+const ID: &str = "Claude";
 
 pub struct Anthropic {
     pub api_key: String,
@@ -22,7 +22,7 @@ pub fn build_body(request: &ChatRequest) -> Value {
         .map(|(i, m)| match m.role {
             Role::User => {
                 let mut content = Vec::new();
-                if let Some(image) = request.image_for(i) {
+                for image in request.images_for(i) {
                     content.push(json!({
                         "type": "image",
                         "source": { "type": "base64", "media_type": image.media_type, "data": image.base64 },
@@ -53,6 +53,9 @@ pub fn parse_event(data: &str) -> AppResult<Delta> {
         Some("message_stop") => Delta::Stop,
         Some("error") => {
             if v["error"]["type"] == "overloaded_error" {
+                return Err(AppError::Overloaded(ID));
+            }
+            if v["error"]["type"] == "rate_limit_error" {
                 return Err(AppError::RateLimited(ID));
             }
             let message = v["error"]["message"].as_str().unwrap_or("error");
@@ -75,7 +78,8 @@ impl Provider for Anthropic {
             .header("anthropic-version", VERSION)
             .json(&build_body(request))
             .send()
-            .await?;
+            .await
+            .map_err(|e| connection_error(ID, false, e))?;
         let response = check(ID, response).await?;
         for_each_line(response, |line| {
             let Some(data) = sse_data(line) else {
@@ -96,7 +100,8 @@ impl Provider for Anthropic {
             .header("x-api-key", &self.api_key)
             .header("anthropic-version", VERSION)
             .send()
-            .await?;
+            .await
+            .map_err(|e| connection_error(ID, false, e))?;
         let body: Value = check(ID, response).await?.json().await?;
         Ok(ids(&body["data"], "id"))
     }
@@ -129,7 +134,8 @@ mod tests {
             system: "sys".into(),
             messages: vec![ChatMessage::user(
                 String::new(),
-                Some(Arc::new(ImageData { base64: "QUJD".into(), media_type: "image/jpeg" })),
+                String::new(),
+                vec![Arc::new(ImageData { base64: "QUJD".into(), media_type: "image/jpeg" })],
             )],
             max_tokens: 512,
         };
@@ -152,6 +158,6 @@ mod tests {
         let refusal = r#"{"type":"message_delta","delta":{"stop_reason":"refusal"}}"#;
         assert!(matches!(parse_event(refusal), Err(AppError::Refused)));
         let overloaded = r#"{"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}"#;
-        assert!(matches!(parse_event(overloaded), Err(AppError::RateLimited(_))));
+        assert!(matches!(parse_event(overloaded), Err(AppError::Overloaded(_))));
     }
 }

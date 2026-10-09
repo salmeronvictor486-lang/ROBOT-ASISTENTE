@@ -29,7 +29,7 @@ pub fn get(provider: ProviderKind) -> AppResult<Option<String>> {
 pub fn require(provider: ProviderKind) -> AppResult<String> {
     get(provider)?
         .filter(|k| !k.is_empty())
-        .ok_or(AppError::MissingKey(provider.id()))
+        .ok_or(AppError::MissingKey(provider.label()))
 }
 
 pub fn delete(provider: ProviderKind) -> AppResult<()> {

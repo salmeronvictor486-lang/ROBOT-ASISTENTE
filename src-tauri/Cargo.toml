@@ -25,20 +25,36 @@ serde_json = "1"
 thiserror = "2"
 xcap = "0.9"
 keyring = { version = "3.6", features = ["apple-native", "windows-native"] }
-image = { version = "0.25", default-features = false, features = ["jpeg", "png"] }
+image = { version = "0.25", default-features = false, features = ["jpeg", "png", "gif", "bmp", "webp"] }
 base64 = "0.22"
-reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "http2", "charset"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "stream", "rustls-tls", "rustls-tls-native-roots", "http2", "charset"] }
 futures-util = "0.3"
 tokio = { version = "1", features = ["sync", "time", "macros"] }
+quick-xml = "0.41.0"
+pdf-writer = "0.15.0"
+ttf-parser = "0.25.1"
+pdf-extract = "0.12.1"
+miniz_oxide = "0.9.1"
+tauri-plugin-dialog = "2"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+subsetter = { version = "0.2.6", default-features = false }
 
 [profile.release]
 codegen-units = 1
 lto = true
 opt-level = "s"
-panic = "abort"
+# "unwind" (y no "abort"): así un PDF raro que haga fallar al lector no cierra Tico.
+panic = "unwind"
 strip = true
 
+[target.'cfg(target_os = "windows")'.dependencies]
+# OCR integrado de Windows (Windows.Media.Ocr) para leer el texto de la pantalla.
+windows = { version = "0.62", features = ["Foundation", "Foundation_Collections", "Globalization", "Graphics_Imaging", "Media_Ocr", "Storage_Streams", "Win32_System_WinRT"] }
+
 [target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6.5"
+objc2-foundation = "0.3.2"
+objc2-vision = "0.3.2"
 tauri-nspanel = "2"
 
 [dev-dependencies]

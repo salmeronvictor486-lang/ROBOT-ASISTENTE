@@ -7,17 +7,35 @@ use super::stream::{for_each_line, Flow};
 use super::{check, parse_json, ChatRequest, Delta, Provider, Role, TokenSink};
 use crate::error::{AppError, AppResult};
 
-const ID: &str = "ollama";
+const ID: &str = "Ollama";
 
 pub struct Ollama {
     pub base_url: String,
 }
 
 fn connection_error(err: reqwest::Error) -> AppError {
-    if err.is_connect() || err.is_timeout() {
+    if err.is_connect() {
         AppError::OllamaOffline
     } else {
-        err.into()
+        super::connection_error(ID, true, err)
+    }
+}
+
+impl Ollama {
+    /// ¿Ve imágenes este modelo? Ollama lo dice en `capabilities` (versiones de 2025 en
+    /// adelante). Si no lo sabemos, suponemos que sí y que el modelo lo intente.
+    pub async fn supports_vision(&self, http: &reqwest::Client, model: &str) -> bool {
+        let response = http
+            .post(format!("{}/api/show", self.base_url))
+            .json(&json!({ "model": model }))
+            .send()
+            .await;
+        let Ok(response) = response else { return true };
+        let Ok(body) = response.json::<Value>().await else { return true };
+        match body["capabilities"].as_array() {
+            Some(caps) => caps.iter().any(|c| c == "vision"),
+            None => true,
+        }
     }
 }
 
@@ -27,8 +45,9 @@ pub fn build_body(request: &ChatRequest) -> Value {
         messages.push(match m.role {
             Role::User => {
                 let mut msg = json!({ "role": "user", "content": request.text_for(i) });
-                if let Some(image) = request.image_for(i) {
-                    msg["images"] = json!([image.base64]);
+                let images = request.images_for(i);
+                if !images.is_empty() {
+                    msg["images"] = json!(images.iter().map(|img| img.base64.as_str()).collect::<Vec<_>>());
                 }
                 msg
             }
@@ -110,7 +129,8 @@ mod tests {
             system: "sys".into(),
             messages: vec![ChatMessage::user(
                 "hola".into(),
-                Some(Arc::new(ImageData { base64: "QUJD".into(), media_type: "image/jpeg" })),
+                String::new(),
+                vec![Arc::new(ImageData { base64: "QUJD".into(), media_type: "image/jpeg" })],
             )],
             max_tokens: 100,
         };
@@ -151,7 +171,7 @@ mod tests {
         let req = ChatRequest {
             model: "gemma3".into(),
             system: String::new(),
-            messages: vec![ChatMessage::user("hola".into(), None)],
+            messages: vec![ChatMessage::user("hola".into(), String::new(), Vec::new())],
             max_tokens: 10,
         };
         let mut out = String::new();
