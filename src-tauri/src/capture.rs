@@ -4,6 +4,7 @@
 //! - Si hay una app bloqueada a la vista (gestor de contraseñas, banco…), no se captura.
 //! - La isla de Tico no sale en la captura (ventana con `contentProtected`).
 //! - La imagen solo vive en memoria; nunca se escribe en disco.
+//! - Si el OCR está activado, también se lee su texto (con el OCR del propio sistema).
 
 use std::io::Cursor;
 
@@ -140,8 +141,14 @@ fn check_blocked(windows: &[(String, String)], blocked: &[String]) -> AppResult<
     }
 }
 
+/// Captura lista para enviar: la imagen y, si se ha podido leer, su texto.
+pub struct PendingCapture {
+    pub image: ImageData,
+    pub text: Option<String>,
+}
+
 /// Hace la captura (bloqueante): devuelve la imagen para la IA y una miniatura.
-fn take(settings: &Settings, cursor: (i32, i32)) -> AppResult<(ImageData, CapturePreview)> {
+fn take(settings: &Settings, cursor: (i32, i32)) -> AppResult<(PendingCapture, CapturePreview)> {
     #[cfg(target_os = "macos")]
     if !permission::ensure() {
         return Err(AppError::ScreenPermission);
@@ -176,22 +183,26 @@ fn take(settings: &Settings, cursor: (i32, i32)) -> AppResult<(ImageData, Captur
 
     let (base64, width, height) = encode_jpeg(&raw, MAX_SIDE, JPEG_QUALITY)?;
     let (thumb, _, _) = encode_jpeg(&raw, THUMB_SIDE, 70)?;
-    Ok((
-        ImageData { base64, media_type: "image/jpeg" },
-        CapturePreview {
-            thumbnail: format!("data:image/jpeg;base64,{thumb}"),
-            width,
-            height,
-        },
-    ))
+    // El OCR trabaja con la imagen a tamaño real: así lee hasta la letra pequeña.
+    let text = if settings.ocr { crate::ocr::recognize(&raw) } else { None };
+    let preview = CapturePreview {
+        thumbnail: format!("data:image/jpeg;base64,{thumb}"),
+        width,
+        height,
+        text_chars: text.as_ref().map_or(0, |t| t.chars().count()),
+    };
+    Ok((PendingCapture { image: ImageData { base64, media_type: "image/jpeg" }, text }, preview))
 }
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct CapturePreview {
     /// Miniatura como data URL para enseñarla antes de enviar.
     pub thumbnail: String,
     pub width: u32,
     pub height: u32,
+    /// Caracteres de texto leídos con OCR (0 si no hay OCR o no había texto).
+    pub text_chars: usize,
 }
 
 /// Captura la pantalla (o la ventana activa) y la deja pendiente de enviar.
