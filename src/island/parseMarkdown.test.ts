@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseInline, parseMarkdown } from "./markdown";
+import { parseInline, parseMarkdown } from "./parseMarkdown";
 
 describe("markdown de las respuestas", () => {
   it("formato en línea", () => {

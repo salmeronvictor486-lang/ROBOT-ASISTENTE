@@ -1,5 +1,5 @@
 import { Fragment, useMemo } from "react";
-import { parseMarkdown, type Inline } from "./markdown";
+import { parseMarkdown, type Inline } from "./parseMarkdown";
 
 function InlineText({ parts }: { parts: Inline[] }) {
   return (

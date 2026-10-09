@@ -144,7 +144,7 @@ src-tauri/src/
     cabeza con retraso (follow-through), squash & stretch, gestos al hablar, saludo al
     abrir la isla y gestos espontáneos en reposo. Los brazos van delante de la cabeza para
     que se vean al saludar o pensar.
-25. **Respuestas con formato**: `src/island/markdown.ts` convierte el Markdown básico en
+25. **Respuestas con formato**: `src/island/parseMarkdown.ts` convierte el Markdown básico en
     elementos de React (sin `dangerouslySetInnerHTML`), con botón de copiar.
 
 ## Anuncio (`promo/`)
