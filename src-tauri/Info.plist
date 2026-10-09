@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- macOS lo enseña la primera vez que Tico pide a Pages, Numbers, Keynote o Word que exporten un PDF. -->
+  <key>NSAppleEventsUsageDescription</key>
+  <string>Tico usa Pages, Numbers, Keynote o Word para pasar tus documentos a PDF cuando se lo pides.</string>
+</dict>
+</plist>

@@ -1,6 +1,6 @@
 # CLAUDE.md — Tico
 
-Guía para Claude Code (y para Victor) sobre cómo está montado el proyecto.
+Guía del proyecto (para Victor y para el asistente de código) sobre cómo está montado.
 **Actualízala al terminar cada fase o cambio grande.**
 
 ## Qué es
@@ -16,7 +16,8 @@ usuario lo pide, mira la pantalla para ayudar. El documento de diseño completo 
 - Prohibido copiar código, sonidos o la mascota de coucou (Mochi). Tico es un diseño propio.
 
 ## Fase actual
-**Fases 0-6 implementadas** (Victor pidió hacerlas todas seguidas y corregir después).
+**Versión 1.0.0** (la primera oficial). Fases 0-6 hechas y, encima, la 1.0: varios Ticos,
+12 servicios de IA, OCR, archivos, Word → PDF e interfaz nueva con pestañas.
 Pendiente: que Victor pruebe en Windows (y en un Mac si puede) y corregir lo que falle.
 
 | Fase | Contenido | Estado |
@@ -34,40 +35,54 @@ Lo que solo se puede verificar en un equipo real (CI solo compila y pasa tests):
 - macOS: que la isla quede por encima de la barra de menús y que el ancho del notch encaje.
 - macOS 15+: que `contentProtected` excluya de verdad la isla de la captura.
 - Que el foco del teclado llegue al cuadro de texto al abrir con el atajo.
+- Soltar archivos sobre la isla (eventos nativos de Tauri) y el OCR de Windows/macOS.
+- Pasar a PDF con Word (PowerShell + COM) en Windows y con Pages (AppleScript) en Mac.
 
 ## Stack
 - Tauri 2 (Rust) + Vite 8 + React 19 + TypeScript 6 (estricto).
 - TypeScript se queda en 6.0 porque typescript-eslint aún no soporta TS 7.
 - Crates: `xcap` (captura), `keyring` 3 (llavero), `reqwest` (HTTP con streaming),
-  `image` (JPEG), `tauri-nspanel` (macOS), plugins `global-shortcut`, `autostart`,
-  `single-instance`.
+  `image` (JPEG/PNG), `tauri-nspanel` (macOS), plugins `global-shortcut`, `autostart`,
+  `single-instance`, `dialog`. Archivos y PDF: `zip` + `quick-xml` (leer .docx/.xlsx/.pptx),
+  `pdf-extract` (leer PDF), `pdf-writer` + `ttf-parser` + `subsetter` (motor de PDF propio).
+  OCR: `windows` (Windows.Media.Ocr) y `objc2-vision` (macOS).
 - Tests: Vitest (frontend) y `cargo test` (Rust). Lint: ESLint + Clippy.
 
 ## Arquitectura
 ```
-index.html / settings.html / playground.html   Una página por ventana (Vite multipágina)
+index.html / settings.html / playground.html / pet.html   Una página por ventana (Vite multipágina)
 src/
   entries/           Punto de entrada de cada ventana
-  island/            La isla: máquina de estados, cápsula, chat, captura
+  island/            La isla: máquina de estados, cápsula, pestañas, chat, archivos
     machine.ts       Reducer puro hidden/peek/compact/expanded (con tests)
     sizes.ts         Tamaños S/M/L y rectángulo para el click-through
-    IslandApp.tsx    Une sensores de Rust, chat, captura, expresiones y sonidos
-    useChat.ts       Estado del chat y streaming por Channel de Tauri
-  robot/             Tico: Tico.tsx (SVG + bucle rAF), expressions.ts (poses), rig.ts (brazos),
-                     gaze.ts, Playground
-  settings/          Ventana de ajustes (se guarda sola) y grabación de atajos
+    IslandApp.tsx    Une sensores de Rust, pestañas, chat, archivos, PDF, expresiones y sonidos
+    Header/HomeView/ChatView/FilesView  Cabecera con pestañas y las tres vistas
+    ModelPicker.tsx  Chip para cambiar de IA y de modelo desde el chat
+    intents.ts       "Pásame este Word a PDF" / "¿qué ves en mi pantalla?" (con tests)
+    useChat.ts       Conversación por Tico, streaming por Channel, tareas de PDF
+  robot/             Tico: Tico.tsx (SVG + bucle rAF), expressions.ts (15 poses), outfits.tsx
+                     (ropa), rig.ts (brazos), gaze.ts, Playground
+  settings/          Ventana de ajustes con menú lateral, editor de Ticos y proveedores
+  pet/               Tico en el escritorio (ventana transparente aparte)
   lib/               spring.ts (muelle propio), tauri.ts (API tipada), sound.ts (Web Audio)
   i18n/              es.json (referencia), ca.json, en.json
 src-tauri/src/
   lib.rs             Arranque, plugins y registro de comandos
   island.rs          Hilo sensor ~60 Hz: hover del borde, click-through, cursor, multimonitor
-  capture.rs         Captura con xcap, apps bloqueadas, JPEG 1568 px, solo en memoria
-  chat.rs            Comandos del chat (streaming, cancelar, borrar, probar conexión)
-  ai/                Trait Provider + anthropic, openai, gemini, ollama y lector de streaming
+  capture.rs         Captura con xcap, apps bloqueadas, JPEG 1568 px + OCR, solo en memoria
+  ocr.rs             Texto de una imagen con el OCR del sistema (Windows / macOS)
+  chat.rs            Chat por Tico: adjuntos, reintentos, cambio de modelo, sin visión → OCR
+  ai/                Trait Provider + anthropic, openai (y compatibles), gemini, ollama, demo,
+                     models.rs (elegir el modelo más parecido) y router.rs (qué proveedor)
+  files.rs           Tipos de archivo, leer texto (docx/pdf/xlsx/pptx/rtf…), abrir y mostrar
+  convert/           Word → PDF: mod.rs (Office/Pages/LibreOffice/propio), docx.rs (lector),
+                     pdf.rs (motor propio con fuentes del sistema recortadas)
   secrets.rs         Claves en el llavero (nunca salen hacia el frontend)
   settings.rs        Ajustes en JSON en la carpeta de config del sistema
   shortcuts.rs       Atajos globales (abrir y capturar)
-  tray.rs            Menú de la bandeja/barra de menús traducido
+  tray.rs            Menú de la bandeja/barra de menús traducido (con "Tico en el escritorio")
+  pet.rs             Ventana de Tico en el escritorio: crearla, quitarla y recordar dónde está
   platform/macos.rs  NSPanel no activable por encima de la barra de menús y pantallas con notch
 .github/workflows/   ci.yml (comprobaciones) y release.yml (instaladores)
 ```
@@ -146,6 +161,30 @@ src-tauri/src/
     que se vean al saludar o pensar.
 25. **Respuestas con formato**: `src/island/parseMarkdown.ts` convierte el Markdown básico en
     elementos de React (sin `dangerouslySetInnerHTML`), con botón de copiar.
+26. **Varios Ticos (1.0)**: `Settings.ticos` (perfil con colores, ropa, instrucciones y
+    proveedor/modelo propios opcionales) y `activeTico`. Rust guarda una conversación por Tico.
+    Los ajustes de la 0.x (`robotBaseColor`…) se migran al primer Tico.
+27. **Proveedores compatibles con OpenAI en un solo módulo** (`ai/openai.rs`): OpenAI,
+    OpenRouter, Groq, Mistral, DeepSeek, xAI, LM Studio y personalizado. OpenAI usa
+    `max_completion_tokens` (y `reasoning_effort: low` en o-series/gpt-5); el resto `max_tokens`.
+28. **Recuperación automática** en `chat.rs`: reintenta 2 veces si hay saturación o corte (antes
+    del primer token), busca el modelo más parecido si el elegido no existe (y lo guarda) y
+    reenvía sin imágenes si el modelo no ve. Los errores llevan `detail` para traducirlos.
+29. **OCR del sistema** (gratis, sin internet) en cada captura e imagen adjunta: el texto va en
+    el `context` del mensaje (no se ve en el chat). Así "lee" la pantalla con cualquier modelo.
+30. **Word → PDF sin IA**: se detecta la intención en el frontend (`intents.ts`) y Rust prueba
+    la app original (PowerShell + COM en Windows, AppleScript en Mac), luego LibreOffice y por
+    último el motor propio. Sin archivo, usa el documento abierto en Word/Pages o pide uno.
+31. **Motor de PDF propio** con fuentes del sistema (Calibri/Arial…) recortadas con `subsetter`
+    y tabla Unicode: el PDF pesa poco y se puede buscar texto. `panic = "unwind"` en release
+    para que un PDF raro no cierre la app (se aísla con `catch_unwind`).
+32. **Isla de 600×340** (a escala M) con pestañas Inicio/Chat/Archivos; sigue siendo una ventana
+    fija con la cápsula animada dentro.
+33. **Tico quieto en miniaturas** (`animated={false}`): sin bucle rAF, para listas de Ticos.
+34. **Tico en el escritorio** (`pet.rs`, `src/pet/`): ventana transparente de 180×214 siempre
+    encima. Se arrastra con `startDragging()` (a partir de 4 px; si no, es un clic que abre la
+    isla). Rust le manda la posición del cursor para los ojos y guarda dónde lo dejas (solo
+    Rust toca `petPosition`: una ventana con ajustes viejos no la pisa).
 
 ## Anuncio (`promo/`)
 `promo.html` + `src/promo/` dibujan el anuncio de 35 s con los componentes reales (Tico,

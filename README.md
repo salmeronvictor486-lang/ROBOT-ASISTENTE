@@ -14,27 +14,60 @@ chatea contigo y, solo cuando tú se lo pides, mira tu pantalla para ayudarte.
 
 ## Qué hace
 
-- **La isla**: aparece al dejar el ratón en el borde superior (zona central), crece al
-  pasar por encima y se abre al hacer clic. Fuera de la cápsula, los clics pasan a las
-  apps de debajo. `Ctrl/⌘ + Mayús + Espacio` la abre para escribir y `Esc` la cierra.
-- **En MacBook con notch**: la isla nace del propio notch. Le salen "orejas" a los lados y
-  todo el contenido aparece por debajo, así que nunca queda tapado.
-- **Tico**: robot propio con cuerpo y brazos, animado a 60 fps. Respira, parpadea (a veces
-  dos veces), te sigue con la mirada, saluda al abrir la isla, gesticula al hablar, se
-  rasca la cabeza, se lleva la mano a la barbilla al pensar, celebra con los brazos
-  arriba y, si se aburre, mira alrededor o se estira. Tiene 8 expresiones: reposo,
-  curioso, mirando, pensando, hablando, contento, error y dormido. Si le haces 3 clics
-  seguidos, protesta.
-- **Respuestas con formato**: listas, negritas y código, con botón para copiarlas.
-- **Chat con IA**: Claude, OpenAI, Gemini u Ollama (local y gratis). Pones tu propia
-  clave, que se guarda en el llavero del sistema. Las respuestas llegan en streaming.
-- **Mira mi pantalla**: botón o `Ctrl/⌘ + Mayús + S`. Captura la pantalla o la ventana
-  activa, te enseña la miniatura antes de enviarla y no captura nada si hay a la vista
-  un gestor de contraseñas o la web de un banco. La imagen nunca se guarda en disco.
-- **Personalizable**: colores de Tico, tamaño, posición, retardos, tema, idioma
-  (castellano, català, English), atajos, apps bloqueadas, sonidos e inicio con el sistema.
+**Versión 1.0** — la primera oficial.
 
-Sin telemetría y sin cuentas.
+- **La isla**: aparece al dejar el ratón en el borde superior (zona central), crece al
+  pasar por encima y se abre al hacer clic. Tiene tres pestañas: **Inicio** (Tico, atajos
+  rápidos y tus Ticos), **Chat** y **Archivos**. Fuera de la cápsula, los clics pasan a las
+  apps de debajo. `Ctrl/⌘ + Mayús + Espacio` la abre para escribir y `Esc` la cierra.
+- **Varios Ticos, uno para cada tarea**: vienen cinco de serie (Tico, Código, Traductor,
+  Escritor y Profe) y puedes crear hasta 12. Cada uno tiene su nombre, sus colores, su ropa,
+  su forma de responder y, si quieres, su propia IA. Cada uno guarda su conversación.
+- **Pasa Word a PDF él solo**: dile «pásame este Word a PDF» (o suelta el archivo en la isla)
+  y lo convierte sin gastar IA. Usa Word, Excel o PowerPoint en Windows; Pages, Numbers o
+  Keynote en Mac; o LibreOffice. Si no tienes ninguno, lo hace con su propio motor
+  (respeta estilos, listas, tablas e imágenes). El PDF va a Descargas y te deja abrirlo o
+  verlo en su carpeta.
+- **Lee la pantalla de verdad**: botón, `Ctrl/⌘ + Mayús + S` o simplemente pregúntale
+  «¿qué ves en mi pantalla?». Además de la imagen, lee el texto con el OCR del propio
+  sistema (gratis y sin internet), así entiende hasta la letra pequeña y funciona incluso con
+  modelos que no ven imágenes. No captura nada si hay a la vista un gestor de contraseñas o
+  la web de un banco, y la imagen nunca se guarda en disco.
+- **Suelta archivos en la isla**: Tico los recoge con una caja y te pregunta qué hacer:
+  pasar a PDF, resumir, traducir o preguntar. Lee Word, PDF, Excel, PowerPoint, texto,
+  código e imágenes.
+- **Todas las IA**: Claude, OpenAI, Gemini, OpenRouter, Groq, Mistral, DeepSeek, Grok,
+  Ollama y LM Studio (en tu ordenador, gratis), cualquier servicio compatible con OpenAI y un
+  **modo demo** para probar sin clave. Cambias de IA o de modelo desde el propio chat. Si el
+  servicio está saturado, reintenta; si el modelo que elegiste ya no existe, elige solo el
+  más parecido; y los errores dicen claramente qué pasa (sin saldo, clave mal pegada…).
+- **Tico**: robot propio con cuerpo y brazos, animado a 60 fps. Respira, parpadea, te sigue
+  con la mirada, saluda, gesticula al hablar y tiene 15 expresiones: también se enamora si le
+  das las gracias, guiña el ojo, se marea si le haces 3 clics, sujeta una caja cuando le
+  sueltas un archivo, teclea mientras trabaja y saca pecho cuando termina. Tiene 11 prendas
+  (gafas, cascos, gorra, boina, birrete, corona, lazo, bufanda, mago, flor y bandana) y se
+  viste solo en Navidad y Halloween.
+- **Tico en el escritorio**: actívalo en la bandeja o en Ajustes y un Tico suelto flota
+  sobre tus ventanas. Te sigue con la mirada, lo arrastras donde quieras (se acuerda) y al
+  pulsarlo abre la isla. Clic derecho para su menú.
+- **Respuestas con formato**: listas, negritas y código, con botón para copiarlas.
+- **Personalizable**: tamaño, posición, retardos, tema, idioma (castellano, català,
+  English), largo de las respuestas, atajos, apps bloqueadas, sonidos e inicio con el
+  sistema.
+
+Sin telemetría y sin cuentas. Las claves se guardan en el llavero del sistema.
+
+### ¿Qué IA elijo?
+
+| Quiero… | Elige |
+| ------- | ----- |
+| Lo mejor, pagando poco | **Claude** (Haiku) o **OpenAI** (mini) |
+| Gratis con clave | **Gemini** (clave en aistudio.google.com) o **Groq** |
+| Cientos de modelos con una sola clave | **OpenRouter** |
+| Gratis, sin internet y sin clave | **Ollama** o **LM Studio** (modelo con visión: `gemma3`) |
+| Probar Tico sin nada | **Modo demo** |
+
+En **Ajustes → Inteligencia artificial** cada servicio tiene su botón «Conseguir una clave».
 
 ## Descargar
 
@@ -91,6 +124,10 @@ Como la app **no está firmada** (firmar cuesta dinero), el sistema avisará la 
   `xattr -dr com.apple.quarantine /Applications/Tico.app`
 - **macOS, ver la pantalla**: la primera vez que uses "Mira mi pantalla", macOS pedirá
   permiso de **Grabación de pantalla**. Actívalo para Tico y vuelve a abrirlo.
+- **macOS, pasar a PDF**: la primera vez que Tico use Pages (o Numbers, Keynote, Word) para
+  hacer un PDF, macOS preguntará si dejas que Tico lo controle. Pulsa **Aceptar**.
+- **Windows, pasar a PDF**: si tienes Word, Tico lo abre en segundo plano (no se ve) para
+  exportar el PDF; si Word está abierto con tu documento, usa ese mismo.
 
 ### Quitar el aviso para siempre (firmar la app)
 
@@ -140,7 +177,8 @@ npm run tauri dev   # la primera vez tarda varios minutos (compila Rust)
 ```
 
 Para la IA gratis en local: instala [Ollama](https://ollama.com), descarga un modelo con
-visión (`ollama pull gemma3`) y elige "Ollama" en Ajustes.
+visión (`ollama pull gemma3`) y elige "Ollama" en Ajustes. Sin nada instalado, el **modo
+demo** responde con ejemplos.
 
 También puedes ver a Tico sin Rust: `npm run dev` y abre
 <http://localhost:1420/playground.html> (página de pruebas de las expresiones).
