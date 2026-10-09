@@ -206,7 +206,10 @@ export function Tico({
     let fidgetUntil = 0;
     let nextFidget = last + between(6000, 11000);
 
-    const loop = (now: number) => {
+    // Usamos performance.now() (y no el argumento de rAF) para que el render del anuncio,
+    // con tiempo virtual, use el mismo reloj que todo lo demás.
+    const loop = () => {
+      const now = performance.now();
       const dt = Math.min((now - last) / 1000, 0.1);
       last = now;
       const t = now / 1000;

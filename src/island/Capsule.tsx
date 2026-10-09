@@ -54,7 +54,10 @@ export function Capsule({ geometry, x, top, visible, capturing, onClick, childre
 
     let frame = 0;
     let last = performance.now();
-    const loop = (now: number) => {
+    // Usamos performance.now() (y no el argumento de rAF) para que el render del anuncio,
+    // con tiempo virtual, use el mismo reloj que todo lo demás.
+    const loop = () => {
+      const now = performance.now();
       const dt = (now - last) / 1000;
       last = now;
       const settled = all.map((sp) => sp.step(dt)).every(Boolean);
