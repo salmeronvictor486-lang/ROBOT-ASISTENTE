@@ -152,6 +152,10 @@ export interface Settings {
   activeTico: string;
   seasonalOutfits: boolean;
   outputFolder: OutputFolder;
+  /** Tico suelto en el escritorio. */
+  desktopTico: boolean;
+  /** Dónde lo dejó el usuario (lo guarda Rust al arrastrarlo). */
+  petPosition: [number, number] | null;
 }
 
 /** El Tico de siempre (el primero de la lista). */
@@ -264,6 +268,8 @@ export const DEFAULT_SETTINGS: Settings = {
   activeTico: "tico",
   seasonalOutfits: true,
   outputFolder: "downloads",
+  desktopTico: false,
+  petPosition: null,
 };
 
 /** El Tico con ese id (o el primero). */

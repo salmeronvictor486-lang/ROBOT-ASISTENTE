@@ -97,6 +97,8 @@ function Island({ settings }: { settings: Settings }) {
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [dragging, setDragging] = useState(false);
   const [converting, setConverting] = useState(0);
+  /** El selector de archivos está abierto: la isla no se esconde mientras eliges. */
+  const [picking, setPicking] = useState(false);
   const [recent, setRecent] = useState<{ id: number; task: PdfTask }[]>([]);
   const [emote, playEmote] = useEmote();
   const showError = useRecent(chat.errorAt, ERROR_MS);
@@ -211,10 +213,13 @@ function Island({ settings }: { settings: Settings }) {
 
   const pickFiles = useCallback(async () => {
     if (!isTauri()) return;
+    setPicking(true);
     try {
       addFiles(await api.filesPick(false));
     } catch (e) {
       chat.notify(toAppError(e));
+    } finally {
+      setPicking(false);
     }
   }, [addFiles, chat]);
 
@@ -371,6 +376,7 @@ function Island({ settings }: { settings: Settings }) {
     pendingCapture !== null ||
     files.length > 0 ||
     dragging ||
+    picking ||
     converting > 0;
   useEffect(() => {
     dispatch({ type: "conversation", active: conversationActive });

@@ -398,6 +398,10 @@ pub struct Settings {
     pub seasonal_outfits: bool,
     /// Dónde dejar los archivos convertidos.
     pub output_folder: OutputFolder,
+    /// Tico suelto en el escritorio.
+    pub desktop_tico: bool,
+    /// Dónde lo dejó el usuario (px lógicos de la pantalla).
+    pub pet_position: Option<[f64; 2]>,
     /// Colores de la versión 0.x (un solo Tico). Solo se leen para migrarlos.
     #[serde(rename = "robotBaseColor", skip_serializing)]
     pub legacy_base_color: Option<String>,
@@ -436,6 +440,8 @@ impl Default for Settings {
             active_tico: "tico".into(),
             seasonal_outfits: true,
             output_folder: OutputFolder::Downloads,
+            desktop_tico: false,
+            pet_position: None,
             legacy_base_color: None,
             legacy_accent_color: None,
         }
@@ -528,6 +534,7 @@ impl Settings {
         self.ollama_url = clean_url(&self.ollama_url).unwrap_or(defaults.ollama_url);
         self.lmstudio_url = clean_url(&self.lmstudio_url).unwrap_or(defaults.lmstudio_url);
         self.custom_url = clean_url(&self.custom_url).unwrap_or_default();
+        self.pet_position = self.pet_position.filter(|[x, y]| x.is_finite() && y.is_finite());
 
         // Ticos: al menos uno, ids únicos y valores válidos.
         let fallback = TicoProfile::default();

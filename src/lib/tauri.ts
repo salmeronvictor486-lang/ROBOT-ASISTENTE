@@ -45,6 +45,8 @@ export const api = {
   fileReveal: (path: string) => invoke<undefined>("file_reveal", { path }),
   fileThumbnail: (path: string) => invoke<string>("file_thumbnail", { path }),
   convertToPdf: (path?: string) => invoke<ConvertResult>("convert_to_pdf", { path }),
+  petOpenIsland: () => invoke<undefined>("pet_open_island"),
+  petHide: () => invoke<undefined>("pet_hide"),
 };
 
 export { Channel };

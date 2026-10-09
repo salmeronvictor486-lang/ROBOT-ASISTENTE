@@ -19,12 +19,13 @@ export default defineConfig({
     watch: { ignored: ["**/src-tauri/**"] },
   },
   build: {
-    // Una página por ventana: la isla, los ajustes y la página de pruebas de Tico.
+    // Una página por ventana: la isla, los ajustes, la página de pruebas y Tico en el escritorio.
     rollupOptions: {
       input: {
         island: "index.html",
         settings: "settings.html",
         playground: "playground.html",
+        pet: "pet.html",
       },
     },
     // WebView2 (Windows) es Chromium; WKWebView (macOS) es Safari.

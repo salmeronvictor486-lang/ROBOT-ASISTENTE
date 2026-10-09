@@ -24,9 +24,18 @@ fn apply_autostart(app: &AppHandle, enabled: bool) -> AppResult<()> {
 /// Guarda los ajustes, aplica lo que cambie y avisa a todas las ventanas.
 #[tauri::command]
 pub fn settings_update(app: AppHandle, settings: Settings) -> AppResult<Settings> {
+    apply_settings(&app, settings)
+}
+
+/// Lo que hace `settings_update` (también lo usan la bandeja y Tico en el escritorio).
+pub fn apply_settings(app: &AppHandle, settings: Settings) -> AppResult<Settings> {
+    let app = app.clone();
     let state = app.state::<AppState>();
-    let new = settings.sanitized();
+    let mut new = settings.sanitized();
     let old = lock(&state.settings).clone();
+    // La posición de Tico en el escritorio solo la cambia Rust (al arrastrarlo): una ventana
+    // con ajustes viejos no debe pisarla.
+    new.pet_position = old.pet_position;
 
     if new.shortcut_open != old.shortcut_open || new.shortcut_capture != old.shortcut_capture {
         if let Err(err) = shortcuts::register(&app, &new) {
@@ -48,6 +57,11 @@ pub fn settings_update(app: AppHandle, settings: Settings) -> AppResult<Settings
     {
         lock(&state.island).layout = None;
         island::place_for_cursor(&app)?;
+    }
+
+    if new.desktop_tico != old.desktop_tico {
+        crate::pet::sync(&app, new.desktop_tico)?;
+        tray::refresh(&app)?;
     }
 
     app.emit("settings://changed", &new)?;

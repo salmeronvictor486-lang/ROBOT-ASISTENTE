@@ -386,13 +386,31 @@ fn tracker_loop(app: &AppHandle) {
             ignoring = Some(!inside);
         }
         // Los ojos de Tico siguen al cursor (~30 Hz y solo si se ve la isla).
-        if rect.is_some() && tick % 2 == 0 && (cursor.x, cursor.y) != last_cursor {
-            last_cursor = (cursor.x, cursor.y);
+        let moved = (cursor.x, cursor.y) != last_cursor;
+        if rect.is_some() && tick % 2 == 0 && moved {
             let _ = app.emit_to(
                 ISLAND_LABEL,
                 "island://cursor",
                 CursorPayload { x: local_x, y: local_y },
             );
+        }
+        // Y también los del Tico del escritorio, si está.
+        if tick % 2 == 0 && moved {
+            if let Some(pet) = app.get_webview_window(crate::pet::PET_LABEL) {
+                if let (Ok(pos), Ok(scale)) = (pet.outer_position(), pet.scale_factor()) {
+                    let _ = app.emit_to(
+                        crate::pet::PET_LABEL,
+                        "island://cursor",
+                        CursorPayload {
+                            x: (cursor.x - f64::from(pos.x)) / scale,
+                            y: (cursor.y - f64::from(pos.y)) / scale,
+                        },
+                    );
+                }
+            }
+        }
+        if tick % 2 == 0 && moved {
+            last_cursor = (cursor.x, cursor.y);
         }
     }
 }

@@ -246,5 +246,10 @@
   "settings.provider.lmstudio": "LM Studio (local i gratis)",
   "settings.provider.custom": "Personalitzat (compatible amb OpenAI)",
   "settings.provider.demo": "Mode demo (sense clau)",
-  "island.customProvider": "Personalitzat"
+  "island.customProvider": "Personalitzat",
+  "pet.hello": "Hola! Sóc en {name}. Prem-me per parlar",
+  "pet.open": "Obre el Tico",
+  "pet.hide": "Amagar de l'escriptori",
+  "settings.desktopTico": "Tico a l'escriptori",
+  "settings.desktopTicoHint": "Un Tico solt que sura sobre les finestres: arrossega'l on vulguis i prem-lo per obrir l'illa. Clic dret per al seu menú."
 }

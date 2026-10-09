@@ -194,6 +194,9 @@ function SettingsPage({
           <Row label={t("settings.hideOnFullscreen")}>
             <Toggle label={t("settings.hideOnFullscreen")} checked={settings.hideOnFullscreen} onChange={(hideOnFullscreen) => update({ hideOnFullscreen })} />
           </Row>
+          <Row label={t("settings.desktopTico")} hint={t("settings.desktopTicoHint")}>
+            <Toggle label={t("settings.desktopTico")} checked={settings.desktopTico} onChange={(desktopTico) => update({ desktopTico })} />
+          </Row>
           <div className="inline">
             <button type="button" className="button" onClick={() => void api.openSettings("playground").catch(console.error)}>
               {t("settings.openPlayground")}

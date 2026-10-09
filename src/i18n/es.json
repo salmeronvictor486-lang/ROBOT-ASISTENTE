@@ -246,5 +246,10 @@
   "settings.provider.lmstudio": "LM Studio (local y gratis)",
   "settings.provider.custom": "Personalizado (compatible con OpenAI)",
   "settings.provider.demo": "Modo demo (sin clave)",
-  "island.customProvider": "Personalizado"
+  "island.customProvider": "Personalizado",
+  "pet.hello": "¡Hola! Soy {name}. Púlsame para hablar",
+  "pet.open": "Abrir Tico",
+  "pet.hide": "Esconder del escritorio",
+  "settings.desktopTico": "Tico en el escritorio",
+  "settings.desktopTicoHint": "Un Tico suelto que flota sobre tus ventanas: arrástralo donde quieras y púlsalo para abrir la isla. Clic derecho para su menú."
 }

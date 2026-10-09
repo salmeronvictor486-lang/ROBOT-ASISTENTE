@@ -7,6 +7,7 @@ mod error;
 mod files;
 mod island;
 mod ocr;
+mod pet;
 mod platform;
 mod secrets;
 mod settings;
@@ -70,6 +71,8 @@ pub fn run() {
             files::file_reveal,
             files::file_thumbnail,
             convert::convert_to_pdf,
+            pet::pet_open_island,
+            pet::pet_hide,
         ])
         .run(tauri::generate_context!());
 
@@ -109,6 +112,11 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     }
     let lang = if settings.language == "auto" { "es" } else { settings.language.as_str() };
     tray::create(&handle, lang)?;
+    if settings.desktop_tico {
+        if let Err(err) = pet::sync(&handle, true) {
+            eprintln!("No se pudo poner a Tico en el escritorio: {err}");
+        }
+    }
     island::spawn_tracker(handle);
     Ok(())
 }
