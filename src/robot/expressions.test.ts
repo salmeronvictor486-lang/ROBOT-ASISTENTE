@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { EXPRESSIONS, POSES } from "./expressions";
+import { EXPRESSIONS, POSES, seasonalOutfit } from "./expressions";
 import { lookOffset } from "./gaze";
 
 describe("expresiones de Tico", () => {
-  it("hay una pose para cada una de las 8 expresiones", () => {
-    expect(EXPRESSIONS).toHaveLength(8);
+  it("hay una pose para cada una de las 15 expresiones", () => {
+    expect(EXPRESSIONS).toHaveLength(15);
     for (const e of EXPRESSIONS) expect(POSES[e]).toBeDefined();
   });
 
@@ -19,6 +19,21 @@ describe("expresiones de Tico", () => {
   it("curious inclina la cabeza 6° y agranda los ojos", () => {
     expect(POSES.curious.tilt).toBe(6);
     expect(POSES.curious.eyeHeight).toBeGreaterThan(POSES.idle.eyeHeight);
+  });
+
+  it("solo una forma de ojos especial a la vez", () => {
+    for (const e of EXPRESSIONS) {
+      const p = POSES[e];
+      const shapes = [p.arcs, p.hearts, p.spirals].filter(Boolean).length;
+      expect(shapes, e).toBeLessThanOrEqual(1);
+    }
+  });
+
+  it("ropa de temporada en Navidad y Halloween", () => {
+    expect(seasonalOutfit(new Date(2026, 11, 24))).toBe("santa");
+    expect(seasonalOutfit(new Date(2027, 0, 5))).toBe("santa");
+    expect(seasonalOutfit(new Date(2026, 9, 31))).toBe("witch");
+    expect(seasonalOutfit(new Date(2026, 6, 1))).toBeNull();
   });
 
   it("error tiene un ojo más pequeño y la antena roja", () => {

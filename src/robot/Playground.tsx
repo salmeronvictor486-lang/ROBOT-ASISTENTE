@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { DEFAULT_SETTINGS } from "../types";
+import { BASE_TICO, OUTFITS } from "../types";
 import { EXPRESSIONS, type Expression } from "./expressions";
 import { setGaze } from "./gaze";
+import type { OutfitName } from "./outfits";
 import { Tico } from "./Tico";
 import "./playground.css";
 
@@ -14,13 +15,24 @@ const LABELS: Record<Expression, string> = {
   happy: "Contento",
   error: "Error",
   sleeping: "Durmiendo",
+  love: "Enamorado",
+  wink: "Guiño",
+  surprised: "Sorprendido",
+  dizzy: "Mareado",
+  box: "Con caja",
+  proud: "Orgulloso",
+  working: "Trabajando",
 };
+
+const OUTFIT_OPTIONS: OutfitName[] = [...OUTFITS, "santa", "witch"];
+const BASE = BASE_TICO;
 
 /** Página de pruebas de Tico: cambia de expresión con botones. */
 export function Playground() {
   const [expression, setExpression] = useState<Expression>("idle");
-  const [baseColor, setBaseColor] = useState(DEFAULT_SETTINGS.robotBaseColor);
-  const [accentColor, setAccentColor] = useState(DEFAULT_SETTINGS.robotAccentColor);
+  const [baseColor, setBaseColor] = useState(BASE.baseColor);
+  const [accentColor, setAccentColor] = useState(BASE.accentColor);
+  const [outfit, setOutfit] = useState<OutfitName>("none");
   const [size, setSize] = useState(220);
   const [bounce, setBounce] = useState(0);
   const [shake, setShake] = useState(0);
@@ -57,6 +69,7 @@ export function Playground() {
           bounce={bounce}
           shake={shake}
           wave={wave}
+          outfit={outfit}
         />
       </div>
       <div className="buttons">
@@ -86,6 +99,16 @@ export function Playground() {
           <input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} />
         </label>
         <label>
+          Ropa{" "}
+          <select value={outfit} onChange={(e) => setOutfit(e.target.value as OutfitName)}>
+            {OUTFIT_OPTIONS.map((o) => (
+              <option key={o} value={o}>
+                {o}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
           Tamaño{" "}
           <input
             type="range"
@@ -97,7 +120,7 @@ export function Playground() {
         </label>
       </div>
       <div className="capsule-demo">
-        <Tico size={36} baseColor={baseColor} accentColor={accentColor} expression={expression} bounce={bounce} shake={shake} />
+        <Tico size={36} baseColor={baseColor} accentColor={accentColor} expression={expression} bounce={bounce} shake={shake} outfit={outfit} />
         <span>Así se ve en la isla</span>
       </div>
     </main>

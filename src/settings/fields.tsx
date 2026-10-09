@@ -4,18 +4,29 @@ import { acceleratorFromEvent, formatAccelerator } from "./shortcut";
 
 export const isMac = typeof navigator !== "undefined" && /Mac/i.test(navigator.userAgent);
 
-export function Section({ title, children }: { title: string; children: ReactNode }) {
+export function Section({ id, title, children }: { id?: string; title: string; children: ReactNode }) {
   return (
-    <section className="section">
+    <section className="section" id={id} data-section={id}>
       <h2>{title}</h2>
       <div className="section-body">{children}</div>
     </section>
   );
 }
 
-export function Row({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
+export function Row({
+  label,
+  hint,
+  wide = false,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  /** El control va debajo de la etiqueta y ocupa todo el ancho. */
+  wide?: boolean;
+  children: ReactNode;
+}) {
   return (
-    <div className="row">
+    <div className={`row${wide ? " wide" : ""}`}>
       <div className="row-label">
         <span>{label}</span>
         {hint && <small>{hint}</small>}
@@ -131,6 +142,7 @@ export function CommitInput({
   list?: string;
   type?: string;
   rows?: number;
+  placeholder?: string;
 }) {
   const [draft, setDraft] = useState(value);
   const [editing, setEditing] = useState(false);
@@ -147,6 +159,7 @@ export function CommitInput({
       setEditing(true);
     },
     onBlur: commit,
+    placeholder: rest.placeholder,
   };
   if (multiline) {
     return <textarea {...common} rows={rest.rows} onChange={(e) => setDraft(e.target.value)} />;

@@ -13,6 +13,13 @@ export const EXPRESSIONS = [
   "happy",
   "error",
   "sleeping",
+  "love",
+  "wink",
+  "surprised",
+  "dizzy",
+  "box",
+  "proud",
+  "working",
 ] as const;
 
 export type Expression = (typeof EXPRESSIONS)[number];
@@ -39,6 +46,18 @@ export interface Pose {
   rightScale: number;
   /** Ojos en arco ^ ^ (contento). */
   arcs: boolean;
+  /** Ojos de corazón. */
+  hearts: boolean;
+  /** Ojos en espiral (mareado). */
+  spirals: boolean;
+  /** Guiña el ojo derecho. */
+  wink: boolean;
+  /** Sujeta una caja (cuando le sueltas un archivo encima). */
+  box: boolean;
+  /** Teclea: los antebrazos suben y bajan deprisa. */
+  typing: boolean;
+  /** La cabeza se tambalea (mareado). */
+  wobble: boolean;
   /** Línea de escaneo en el visor (mirando la pantalla). */
   scan: boolean;
   /** Hacia dónde miran los ojos. */
@@ -69,6 +88,12 @@ const BASE: Pose = {
   leftScale: 1,
   rightScale: 1,
   arcs: false,
+  hearts: false,
+  spirals: false,
+  wink: false,
+  box: false,
+  typing: false,
+  wobble: false,
   scan: false,
   look: "cursor",
   blink: true,
@@ -168,7 +193,106 @@ export const POSES: Record<Expression, Pose> = {
     sway: 0,
     fidgets: false,
   },
+  // Enamorado: ojos de corazón y manos juntas en el pecho.
+  love: {
+    ...BASE,
+    hearts: true,
+    tilt: 5,
+    look: "center",
+    blink: false,
+    leftArm: { shoulder: 30, elbow: -95 },
+    rightArm: { shoulder: 30, elbow: -95 },
+    sway: 3,
+    fidgets: false,
+  },
+  // Guiño: un ojo cerrado y el pulgar arriba.
+  wink: {
+    ...BASE,
+    wink: true,
+    tilt: -5,
+    look: "center",
+    blink: false,
+    rightArm: { shoulder: 120, elbow: 70 },
+    sway: 2,
+    fidgets: false,
+  },
+  // Sorprendido: ojos redondos y grandes, brazos abiertos.
+  surprised: {
+    ...BASE,
+    eyeWidth: 11,
+    eyeHeight: 12.5,
+    look: "center",
+    blink: false,
+    leftArm: { shoulder: 62, elbow: 40 },
+    rightArm: { shoulder: 62, elbow: 40 },
+    sway: 0,
+    fidgets: false,
+  },
+  // Mareado (3 clics seguidos): ojos en espiral y cabeza que se tambalea.
+  dizzy: {
+    ...BASE,
+    spirals: true,
+    wobble: true,
+    look: "center",
+    blink: false,
+    leftArm: { shoulder: 38, elbow: 60 },
+    rightArm: { shoulder: 50, elbow: 20 },
+    sway: 10,
+    fidgets: false,
+  },
+  // Con una caja: le estás soltando un archivo y lo recoge.
+  box: {
+    ...BASE,
+    box: true,
+    eyeWidth: 8.5,
+    eyeHeight: 16.5,
+    tilt: 0,
+    look: "center",
+    leftArm: { shoulder: 46, elbow: -78 },
+    rightArm: { shoulder: 46, elbow: -78 },
+    sway: 0,
+    fidgets: false,
+  },
+  // Orgulloso: ojos ^ ^ y manos en la cintura.
+  proud: {
+    ...BASE,
+    arcs: true,
+    tilt: -3,
+    look: "center",
+    blink: false,
+    leftArm: { shoulder: 48, elbow: -120 },
+    rightArm: { shoulder: 48, elbow: -120 },
+    sway: 0,
+    fidgets: false,
+  },
+  // Trabajando (convirtiendo un archivo): mira hacia abajo y teclea.
+  working: {
+    ...BASE,
+    eyeWidth: 9,
+    eyeHeight: 9,
+    eyeRound: 0.6,
+    look: "center",
+    antennaPulse: true,
+    blink: true,
+    typing: true,
+    leftArm: { shoulder: 38, elbow: -60 },
+    rightArm: { shoulder: 38, elbow: -60 },
+    sway: 0,
+    fidgets: false,
+  },
 };
+
+/**
+ * Ropa de temporada si el Tico no lleva nada: gorro de Papá Noel en Navidad y sombrero
+ * de bruja por Halloween.
+ */
+export function seasonalOutfit(date: Date): "santa" | "witch" | null {
+  const m = date.getMonth() + 1;
+  const d = date.getDate();
+  if ((m === 12 && d >= 10) || (m === 1 && d <= 6)) return "santa";
+  if ((m === 10 && d >= 25) || (m === 11 && d <= 1)) return "witch";
+  return null;
+}
 
 /** Máximo desplazamiento de los ojos al seguir el cursor, en px de pantalla. */
 export const MAX_LOOK_PX = 3;

@@ -3,6 +3,7 @@ import { Spring, SPRINGS, type SpringConfig } from "../lib/spring";
 import { useReducedMotion } from "../lib/useReducedMotion";
 import { MAX_LOOK_PX, POSES, type Expression, type Pose } from "./expressions";
 import { getGaze, lookOffset } from "./gaze";
+import { OutfitLayer, type OutfitName } from "./outfits";
 import { armJoints, FOREARM, UPPER_ARM } from "./rig";
 
 export interface TicoProps {
@@ -17,6 +18,10 @@ export interface TicoProps {
   shake?: number;
   /** Cada vez que cambia este número, Tico saluda con la mano. */
   wave?: number;
+  /** Ropa o accesorio. */
+  outfit?: OutfitName;
+  /** `false`: dibujo quieto (para miniaturas; no gasta CPU). */
+  animated?: boolean;
 }
 
 const ERROR_COLOR = "#E5484D";
@@ -32,6 +37,26 @@ const ANTENNA = { x: 50, y: 20 };
 const FEET = { x: 50, y: 92 };
 const BLINK_MS = 130;
 const WAVE_MS = 1500;
+const HEART_COLOR = "#FF6B9A";
+
+/** Corazón centrado en (cx, cy). */
+function heartPath(cx: number, cy: number): string {
+  return (
+    `M${cx} ${cy + 5} C${cx - 8} ${cy - 0.5} ${cx - 5} ${cy - 7.5} ${cx} ${cy - 3} ` +
+    `C${cx + 5} ${cy - 7.5} ${cx + 8} ${cy - 0.5} ${cx} ${cy + 5} Z`
+  );
+}
+
+/** Espiral (ojos de mareado) centrada en (cx, cy). */
+function spiralPath(cx: number, cy: number): string {
+  let d = `M${cx} ${cy}`;
+  for (let i = 1; i <= 36; i++) {
+    const a = i * 0.5;
+    const r = a * 0.36;
+    d += ` L${(cx + Math.cos(a) * r).toFixed(2)} ${(cy + Math.sin(a) * r).toFixed(2)}`;
+  }
+  return d;
+}
 
 type Fidget = "look" | "stretch" | "wave" | "hop" | "antenna";
 
@@ -74,6 +99,10 @@ function createAnim(pose: Pose) {
     leftScale: s(pose.leftScale, SPRINGS.bouncy),
     rightScale: s(pose.rightScale, SPRINGS.bouncy),
     arcs: s(pose.arcs ? 1 : 0, SPRINGS.snappy),
+    hearts: s(pose.hearts ? 1 : 0, SPRINGS.bouncy),
+    spirals: s(pose.spirals ? 1 : 0, SPRINGS.snappy),
+    wink: s(pose.wink ? 1 : 0, SPRINGS.snappy),
+    box: s(pose.box ? 1 : 0, SPRINGS.bouncy),
     scan: s(pose.scan ? 1 : 0, SPRINGS.snappy),
     zzz: s(pose.zzz ? 1 : 0),
     lookX: s(0, { stiffness: 260, damping: 22 }),
@@ -115,6 +144,8 @@ export function Tico({
   bounce = 0,
   shake = 0,
   wave = 0,
+  outfit = "none",
+  animated = true,
 }: TicoProps) {
   const reducedMotion = useReducedMotion();
   // Id único para el clipPath: puede haber varios Ticos en la misma página.
@@ -130,6 +161,10 @@ export function Tico({
   const leftEyeRef = useRef<SVGRectElement>(null);
   const rightEyeRef = useRef<SVGRectElement>(null);
   const arcsRef = useRef<SVGGElement>(null);
+  const heartsRef = useRef<SVGGElement>(null);
+  const spiralsRef = useRef<SVGGElement>(null);
+  const winkRef = useRef<SVGPathElement>(null);
+  const boxRef = useRef<SVGGElement>(null);
   const scanRef = useRef<SVGRectElement>(null);
   const haloRef = useRef<SVGCircleElement>(null);
   const chestRef = useRef<SVGCircleElement>(null);
@@ -138,7 +173,11 @@ export function Tico({
 
   const pose = POSES[expression];
   const poseRef = useRef(pose);
-  const reducedRef = useRef(reducedMotion);
+  // Quieto: como con "reducir movimiento", pero además solo se pinta cuando algo cambia.
+  const reducedRef = useRef(reducedMotion || !animated);
+  const stillRef = useRef(!animated);
+  /** Pinta un fotograma más (lo usa el modo quieto al cambiar de expresión). */
+  const kickRef = useRef<(() => void) | null>(null);
   const sizeRef = useRef(size);
   const animRef = useRef<Anim | null>(null);
   const waveUntil = useRef(0);
@@ -146,9 +185,11 @@ export function Tico({
 
   useEffect(() => {
     poseRef.current = pose;
-    reducedRef.current = reducedMotion;
+    reducedRef.current = reducedMotion || !animated;
+    stillRef.current = !animated;
     sizeRef.current = size;
-  }, [pose, reducedMotion, size]);
+    kickRef.current?.();
+  }, [pose, reducedMotion, size, animated]);
 
   // Cada token: los ojos rebotan, el pecho se ilumina y un brazo gesticula.
   useEffect(() => {
@@ -177,12 +218,20 @@ export function Tico({
     if (wave && !reducedRef.current) waveUntil.current = performance.now() + WAVE_MS;
   }, [wave]);
 
-  // Al ponerse contento da un saltito (la antena y la cabeza siguen el movimiento).
+  // Al ponerse contento (o sorprenderse) da un saltito; la antena y la cabeza lo siguen.
   useEffect(() => {
     const a = animRef.current;
-    if (expression === "happy" && a && !reducedRef.current) {
+    if (!a || reducedRef.current) return;
+    if (expression === "happy" || expression === "love" || expression === "proud") {
       a.jump.impulse(-120);
       a.antenna.impulse(260);
+    } else if (expression === "surprised") {
+      a.jump.impulse(-160);
+      a.antenna.impulse(-420);
+    } else if (expression === "box") {
+      a.jump.impulse(-60);
+    } else if (expression === "dizzy") {
+      a.antenna.impulse(600);
     }
   }, [expression]);
 
@@ -287,7 +336,13 @@ export function Tico({
       anim.leftScale.target = p.leftScale;
       anim.rightScale.target = p.rightScale;
       anim.arcs.target = p.arcs ? 1 : 0;
+      anim.hearts.target = p.hearts ? 1 : 0;
+      anim.spirals.target = p.spirals ? 1 : 0;
+      anim.wink.target = p.wink ? 1 : 0;
+      anim.box.target = p.box ? 1 : 0;
       anim.scan.target = p.scan ? 1 : 0;
+      // Mareado: la cabeza da vueltas de lado a lado.
+      if (p.wobble && !reduced) anim.tilt.target += Math.sin(t * 5.5) * 9;
       anim.zzz.target = p.zzz ? 1 : 0;
 
       const sway = reduced ? 0 : p.sway;
@@ -303,6 +358,11 @@ export function Tico({
         leftArm = { shoulder: 168, elbow: 4 };
         rightArm = { shoulder: 168, elbow: 4 };
         anim.tilt.target -= 4;
+      }
+      if (p.typing && !reduced) {
+        // Teclea: cada antebrazo sube y baja por turnos.
+        leftArm = { ...leftArm, elbow: leftArm.elbow + Math.sin(t * 22) * 16 };
+        rightArm = { ...rightArm, elbow: rightArm.elbow + Math.sin(t * 22 + Math.PI) * 16 };
       }
       if (waving) {
         // Saluda con la mano derecha: brazo arriba y antebrazo de lado a lado.
@@ -382,8 +442,9 @@ export function Tico({
       drawArm("right", anim.right, rightArmRef.current, rightHandRef.current);
 
       // --- Ojos ---
-      const eyeOpacity = String(Math.max(0, 1 - anim.arcs.value));
-      const drawEye = (el: SVGRectElement | null, cx: number, scale: number) => {
+      const special = Math.max(anim.arcs.value, anim.hearts.value, anim.spirals.value);
+      const eyeOpacity = String(Math.max(0, 1 - special));
+      const drawEye = (el: SVGRectElement | null, cx: number, scale: number, opacity = eyeOpacity) => {
         if (!el) return;
         const w = Math.max(anim.eyeWidth.value * scale, 0.5);
         const h = Math.max(anim.eyeHeight.value * scale * blink, 1.1);
@@ -394,10 +455,46 @@ export function Tico({
         el.setAttribute("width", w.toFixed(2));
         el.setAttribute("height", h.toFixed(2));
         el.setAttribute("rx", ((Math.min(w, h) / 2) * anim.eyeRound.value).toFixed(2));
-        el.setAttribute("opacity", eyeOpacity);
+        el.setAttribute("opacity", opacity);
       };
+      const wink = clamp(anim.wink.value, 0, 1);
       drawEye(leftEyeRef.current, LEFT_X, anim.leftScale.value);
-      drawEye(rightEyeRef.current, RIGHT_X, anim.rightScale.value);
+      drawEye(
+        rightEyeRef.current,
+        RIGHT_X,
+        anim.rightScale.value,
+        String(Math.max(0, 1 - special - wink)),
+      );
+      const eyeShift = `translate(${anim.lookX.value.toFixed(2)} ${(anim.lookY.value + anim.bounce.value).toFixed(2)})`;
+      winkRef.current?.setAttribute("opacity", wink.toFixed(3));
+      winkRef.current?.setAttribute("transform", eyeShift);
+      if (heartsRef.current) {
+        // Los corazones laten.
+        const beat = reduced ? 1 : 1 + 0.12 * Math.max(0, Math.sin(t * 9));
+        const hv = clamp(anim.hearts.value, 0, 1.3);
+        heartsRef.current.setAttribute("opacity", Math.min(hv, 1).toFixed(3));
+        heartsRef.current.setAttribute(
+          "transform",
+          `${eyeShift} translate(50 ${EYE_Y}) scale(${(hv * beat).toFixed(3)}) translate(-50 ${-EYE_Y})`,
+        );
+      }
+      if (spiralsRef.current) {
+        const turn = reduced ? 0 : (t * 400) % 360;
+        spiralsRef.current.setAttribute("opacity", clamp(anim.spirals.value, 0, 1).toFixed(3));
+        const children = spiralsRef.current.children;
+        const left = children[0];
+        const right = children[1];
+        left?.setAttribute("transform", `rotate(${turn.toFixed(1)} ${LEFT_X} ${EYE_Y})`);
+        right?.setAttribute("transform", `rotate(${turn.toFixed(1)} ${RIGHT_X} ${EYE_Y})`);
+      }
+      if (boxRef.current) {
+        const b = clamp(anim.box.value, 0, 1.2);
+        boxRef.current.setAttribute("opacity", Math.min(b * 2, 1).toFixed(3));
+        boxRef.current.setAttribute(
+          "transform",
+          `translate(50 88) scale(${Math.max(b, 0.001).toFixed(3)}) translate(-50 -88)`,
+        );
+      }
 
       arcsRef.current?.setAttribute("opacity", anim.arcs.value.toFixed(3));
       arcsRef.current?.setAttribute(
@@ -428,11 +525,16 @@ export function Tico({
         zzzRef.current.setAttribute("opacity", (anim.zzz.value * (1 - z)).toFixed(3));
       }
 
-      frame = requestAnimationFrame(loop);
+      // Quieto: no pedimos más fotogramas hasta que algo cambie.
+      frame = stillRef.current ? 0 : requestAnimationFrame(loop);
     };
     frame = requestAnimationFrame(loop);
+    kickRef.current = () => {
+      if (!frame) frame = requestAnimationFrame(loop);
+    };
     return () => {
       cancelAnimationFrame(frame);
+      kickRef.current = null;
       animRef.current = null;
     };
   }, []);
@@ -510,8 +612,26 @@ export function Tico({
               <path d={`M${LEFT_X - 5.5} ${EYE_Y + 3} Q${LEFT_X} ${EYE_Y - 6} ${LEFT_X + 5.5} ${EYE_Y + 3}`} />
               <path d={`M${RIGHT_X - 5.5} ${EYE_Y + 3} Q${RIGHT_X} ${EYE_Y - 6} ${RIGHT_X + 5.5} ${EYE_Y + 3}`} />
             </g>
+            <path
+              ref={winkRef}
+              d={`M${RIGHT_X - 5.5} ${EYE_Y + 3} Q${RIGHT_X} ${EYE_Y - 6} ${RIGHT_X + 5.5} ${EYE_Y + 3}`}
+              fill="none"
+              stroke={accentColor}
+              strokeWidth="3.4"
+              strokeLinecap="round"
+              opacity="0"
+            />
+            <g ref={heartsRef} opacity="0" fill={HEART_COLOR}>
+              <path d={heartPath(LEFT_X, EYE_Y)} />
+              <path d={heartPath(RIGHT_X, EYE_Y)} />
+            </g>
+            <g ref={spiralsRef} opacity="0" fill="none" stroke={accentColor} strokeWidth="1.8" strokeLinecap="round">
+              <path d={spiralPath(LEFT_X, EYE_Y)} />
+              <path d={spiralPath(RIGHT_X, EYE_Y)} />
+            </g>
             <rect ref={scanRef} x={VISOR.x} width={VISOR.width} height="2" fill={accentColor} opacity="0" />
           </g>
+          <OutfitLayer outfit={outfit} part="head" accent={accentColor} />
           <text
             ref={zzzRef}
             x="74"
@@ -524,6 +644,17 @@ export function Tico({
           >
             z
           </text>
+        </g>
+
+        <OutfitLayer outfit={outfit} part="body" accent={accentColor} />
+
+        {/* Caja para recoger archivos */}
+        <g ref={boxRef} opacity="0">
+          <path d="M31 66 L39 59 L61 59 L69 66 Z" fill="#B98647" />
+          <rect x="31" y="65" width="38" height="25" rx="2.5" fill="#D3A162" />
+          <rect x="46.5" y="65" width="7" height="25" fill="#E6C08A" opacity="0.85" />
+          <path d="M31 65 L69 65" stroke="#A97636" strokeWidth="1.2" />
+          <circle cx="50" cy="78" r="2.6" fill={accentColor} />
         </g>
 
         {/* Brazos: delante de todo, para que las manos se vean al saludar o pensar */}

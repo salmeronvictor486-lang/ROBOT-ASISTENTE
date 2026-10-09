@@ -6,7 +6,7 @@ export const BASE_SIZES: Record<IslandState, { width: number; height: number }> 
   hidden: { width: 140, height: 0 },
   peek: { width: 200, height: 36 },
   compact: { width: 360, height: 48 },
-  expanded: { width: 480, height: 320 },
+  expanded: { width: 600, height: 340 },
 };
 
 export const SIZE_SCALE: Record<IslandSize, number> = { s: 0.85, m: 1, l: 1.2 };

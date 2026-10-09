@@ -32,7 +32,17 @@ export function translate(
 
 export type Translate = (key: MessageKey, vars?: Record<string, string | number>) => string;
 
+/** Para claves armadas en tiempo de ejecución (`island.engine.${motor}`). */
+export function isMessageKey(key: string): key is MessageKey {
+  return key in es;
+}
+
 export const I18nContext = createContext<Lang>("es");
+
+/** Idioma activo ("es", "ca" o "en"). */
+export function useI18nLang(): Lang {
+  return useContext(I18nContext);
+}
 
 export function useT(): Translate {
   const lang = useContext(I18nContext);

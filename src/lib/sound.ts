@@ -3,7 +3,7 @@
  * Pitidos cortos y suaves, como de robot pequeño.
  */
 
-export type SoundKind = "open" | "send" | "done" | "error";
+export type SoundKind = "open" | "send" | "done" | "error" | "drop" | "pop" | "success";
 
 let context: AudioContext | null = null;
 
@@ -43,6 +43,19 @@ const PATTERNS: Record<SoundKind, [number, number, number, OscillatorType?][]> =
   error: [
     [330, 0, 0.12, "square"],
     [247, 0.12, 0.18, "square"],
+  ],
+  // Tico se traga el archivo: un "glup" que baja.
+  drop: [
+    [520, 0, 0.07, "triangle"],
+    [390, 0.06, 0.08, "triangle"],
+    [260, 0.12, 0.12, "triangle"],
+  ],
+  pop: [[1200, 0, 0.04, "sine"]],
+  // Archivo convertido: tres notas que suben.
+  success: [
+    [659, 0, 0.08],
+    [880, 0.08, 0.08],
+    [1319, 0.16, 0.18],
   ],
 };
 
