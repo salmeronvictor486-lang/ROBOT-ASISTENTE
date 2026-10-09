@@ -52,10 +52,40 @@ async fn run_provider(
             Gemini { api_key }.stream_chat(http, request, on_token).await
         }
         ProviderKind::Ollama => {
-            let base_url = settings.ollama_url.clone();
-            Ollama { base_url }.stream_chat(http, request, on_token).await
+            let ollama = Ollama { base_url: settings.ollama_url.clone() };
+            // Ollama exige el nombre exacto ("gemma3:4b", no "gemma3"): buscamos el instalado.
+            let installed = ollama.list_models(http).await?;
+            let model = resolve_ollama_model(&request.model, &installed).ok_or_else(|| {
+                AppError::Model(if installed.is_empty() {
+                    "no hay ningún modelo instalado en Ollama (ollama pull gemma3)".into()
+                } else {
+                    format!("«{}» no está instalado; tienes: {}", request.model, installed.join(", "))
+                })
+            })?;
+            let request = ChatRequest {
+                model,
+                system: request.system.clone(),
+                messages: request.messages.clone(),
+                max_tokens: request.max_tokens,
+            };
+            ollama.stream_chat(http, &request, on_token).await
         }
     }
+}
+
+/// Elige el modelo de Ollama a usar: el nombre exacto, el mismo con `:latest`, el primero
+/// con ese nombre y cualquier etiqueta, o (si solo hay uno instalado) ese.
+pub fn resolve_ollama_model(requested: &str, installed: &[String]) -> Option<String> {
+    let requested = requested.trim();
+    let exact = installed.iter().find(|m| *m == requested);
+    let latest = installed.iter().find(|m| **m == format!("{requested}:latest"));
+    let base = requested.split(':').next().unwrap_or(requested);
+    let same_family = installed.iter().find(|m| m.split(':').next() == Some(base));
+    exact
+        .or(latest)
+        .or(same_family)
+        .or(if installed.len() == 1 { installed.first() } else { None })
+        .cloned()
 }
 
 /// Envía un mensaje (con la captura pendiente si `attach_capture`) y va mandando tokens.
@@ -173,4 +203,26 @@ pub fn secret_status() -> HashMap<&'static str, bool> {
         .iter()
         .map(|p| (p.id(), secrets::get(*p).ok().flatten().is_some()))
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::resolve_ollama_model;
+
+    fn list(names: &[&str]) -> Vec<String> {
+        names.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn resolves_ollama_names() {
+        let installed = list(&["qwen2.5vl:7b", "gemma3:4b"]);
+        assert_eq!(resolve_ollama_model("gemma3", &installed).as_deref(), Some("gemma3:4b"));
+        assert_eq!(resolve_ollama_model("qwen2.5vl:7b", &installed).as_deref(), Some("qwen2.5vl:7b"));
+        assert_eq!(resolve_ollama_model("llava", &installed), None);
+        assert_eq!(
+            resolve_ollama_model("gemma3", &list(&["qwen2.5vl:7b"])).as_deref(),
+            Some("qwen2.5vl:7b")
+        );
+        assert_eq!(resolve_ollama_model("gemma3", &list(&["gemma3:latest"])).as_deref(), Some("gemma3:latest"));
+    }
 }

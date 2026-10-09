@@ -64,6 +64,11 @@ export function ProviderSection({ settings, update }: Props) {
     try {
       const list = await api.aiTestConnection(provider);
       setModels(list);
+      // Si el modelo escrito no está en la lista, ponemos el primero disponible.
+      const current = settings.models[provider];
+      if (list.length > 0 && !list.includes(current)) {
+        update({ models: { ...settings.models, [provider]: list[0] ?? current } });
+      }
       setTest({ kind: "ok", count: list.length });
     } catch (e) {
       setTest({ kind: "error", error: toAppError(e) });

@@ -1,7 +1,7 @@
 {
   "name": "tico",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Isla dinámica de escritorio con Tico, un robot asistente",
   "license": "MIT",
   "type": "module",
