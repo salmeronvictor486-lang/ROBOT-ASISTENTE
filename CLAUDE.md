@@ -128,6 +128,9 @@ src-tauri/src/
 21. **Commits con el correo privado de GitHub**
     (`237393936+salmeronvictor486-lang@users.noreply.github.com`): la cuenta bloquea los
     push que exponen el Gmail.
+22. **Firma de Apple opcional**: `release.yml` firma con Developer ID y notariza solo si
+    existen los secrets `APPLE_*` (cuenta de 99 $/año). Sin ellos, firma ad hoc y
+    Gatekeeper avisa ("Apple no ha podido verificar…"); el README explica cómo abrirla.
 
 ## Licencias
 Código: MIT (`LICENSE`). Tico, su nombre, su diseño y sus sonidos: todos los derechos

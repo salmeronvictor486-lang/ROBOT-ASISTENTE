@@ -66,13 +66,45 @@ Como la app **no está firmada** (firmar cuesta dinero), el sistema avisará la 
 
 - **Windows**: SmartScreen dice "Windows protegió su PC". Pulsa **Más información →
   Ejecutar de todas formas**. Se instala solo para tu usuario (no pide administrador).
-- **macOS**: abre el `.dmg` y arrastra Tico a Aplicaciones. Al abrirlo, macOS dirá que
-  no puede comprobar el desarrollador. Ve a **Ajustes del Sistema → Privacidad y
-  seguridad** y pulsa **Abrir igualmente** (o clic derecho sobre Tico → Abrir).
-  Si dice que la app "está dañada", ejecuta en la Terminal:
+- **macOS** — sale "No se ha abierto Tico. Apple no ha podido verificar…". Es normal en
+  apps sin firma de Apple; no es un virus. Para abrirla (solo la primera vez):
+  1. Abre el `.dmg` y arrastra **Tico** a la carpeta **Aplicaciones** (no lo abras desde
+     el `.dmg` ni desde el Escritorio).
+  2. Abre Tico. Cuando salga el aviso, pulsa **Aceptar** (¡no "Trasladar a la Papelera"!).
+  3. Ve a **Ajustes del Sistema → Privacidad y seguridad**, baja hasta **Seguridad** y
+     pulsa **Abrir igualmente** junto a "Se ha bloqueado Tico". Pon tu contraseña.
+  4. En el último aviso pulsa **Abrir**. A partir de ahí se abre normal.
+
+  Alternativa con la Terminal (hace lo mismo de golpe):
   `xattr -dr com.apple.quarantine /Applications/Tico.app`
 - **macOS, ver la pantalla**: la primera vez que uses "Mira mi pantalla", macOS pedirá
   permiso de **Grabación de pantalla**. Actívalo para Tico y vuelve a abrirlo.
+
+### Quitar el aviso para siempre (firmar la app)
+
+El aviso solo desaparece si la app está **firmada y notarizada por Apple** (y en
+Windows, firmada con un certificado de código). No hay forma gratuita de hacerlo en
+macOS: hace falta la cuenta de **Apple Developer (99 $/año)**. El workflow ya está
+preparado; cuando tengas la cuenta:
+
+1. En [developer.apple.com](https://developer.apple.com/account/resources/certificates)
+   crea un certificado **Developer ID Application**, instálalo en tu Mac y expórtalo
+   desde Acceso a Llaveros como `.p12` con contraseña.
+2. Crea una contraseña de app en [account.apple.com](https://account.apple.com)
+   (Inicio de sesión y seguridad → Contraseñas de apps).
+3. En GitHub: **Settings → Secrets and variables → Actions → New repository secret**:
+
+   | Secret | Valor |
+   | ------ | ----- |
+   | `APPLE_CERTIFICATE` | El `.p12` en base64: `base64 -i certificado.p12 \| pbcopy` |
+   | `APPLE_CERTIFICATE_PASSWORD` | La contraseña del `.p12` |
+   | `APPLE_SIGNING_IDENTITY` | `Developer ID Application: Tu Nombre (TEAMID)` |
+   | `APPLE_ID` | El correo de tu cuenta de Apple |
+   | `APPLE_PASSWORD` | La contraseña de app del paso 2 |
+   | `APPLE_TEAM_ID` | Tu Team ID (10 caracteres) |
+
+4. Lanza **Actions → Instaladores → Run workflow**. El `.dmg` saldrá firmado y
+   notarizado, y macOS lo abrirá sin avisos.
 
 Tico no sale en la barra de tareas ni en el Dock: vive en la **bandeja del sistema**
 (Windows) o en la **barra de menús** (macOS). Desde ahí abres los ajustes o lo cierras.

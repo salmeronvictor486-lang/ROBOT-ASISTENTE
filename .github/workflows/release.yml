@@ -70,6 +70,38 @@ jobs:
       - name: Instalar dependencias
         run: npm ci
 
+      # Firma y notarización de Apple: solo si existen los secrets (requiere la cuenta de
+      # Apple Developer, 99 $/año). Sin ellos, el .dmg sale firmado "ad hoc" y macOS
+      # avisa al abrirlo. Ver "Firmar la app de macOS" en el README.
+      - name: Preparar la firma de Apple (si hay secrets)
+        if: runner.os == 'macOS'
+        shell: bash
+        env:
+          CERT: ${{ secrets.APPLE_CERTIFICATE }}
+          CERT_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "$CERT" ]; then
+            echo "Sin certificado de Apple: el .dmg se firma ad hoc (macOS avisará al abrirlo)."
+            exit 0
+          fi
+          {
+            echo "APPLE_CERTIFICATE=$CERT"
+            echo "APPLE_CERTIFICATE_PASSWORD=$CERT_PASSWORD"
+            echo "APPLE_SIGNING_IDENTITY=$IDENTITY"
+          } >> "$GITHUB_ENV"
+          if [ -n "$APPLE_ID" ]; then
+            {
+              echo "APPLE_ID=$APPLE_ID"
+              echo "APPLE_PASSWORD=$APPLE_PASSWORD"
+              echo "APPLE_TEAM_ID=$TEAM_ID"
+            } >> "$GITHUB_ENV"
+          fi
+          echo "Se firmará con Developer ID y se notarizará con Apple."
+
       - name: Compilar el instalador
         run: npm run tauri build -- ${{ matrix.args }}
 
