@@ -6,6 +6,12 @@ chatea contigo y, solo cuando tú se lo pides, mira tu pantalla para ayudarte.
 
 <p align="center"><img src="assets/tico.svg" alt="Tico" width="160"></p>
 
+## Anuncio
+
+<p align="center"><a href="promo/tico-anuncio.mp4"><img src="promo/tico-poster.jpg" alt="Ver el anuncio de Tico (35 s)" width="720"></a></p>
+
+<p align="center"><a href="promo/tico-anuncio.mp4">▶ Ver el anuncio (35 s)</a> · <a href="promo/BRIEF.md">Brief y guion</a></p>
+
 ## Qué hace
 
 - **La isla**: aparece al dejar el ratón en el borde superior (zona central), crece al

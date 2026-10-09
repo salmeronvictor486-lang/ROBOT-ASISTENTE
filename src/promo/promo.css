@@ -1,0 +1,585 @@
+/* Anuncio de Tico: lienzo fijo de 1920×1080. */
+
+html body {
+  background: #000;
+  margin: 0;
+  overflow: hidden;
+}
+
+.promo {
+  --accent: #3dd6d0;
+  position: relative;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: #000;
+  color: #f2f0eb;
+  font-family: "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+.promo-black {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  pointer-events: none;
+  z-index: 50;
+}
+
+.scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.accent {
+  color: #3dd6d0;
+}
+
+/* ---------- 1. Gancho ---------- */
+
+.hook {
+  display: grid;
+  place-content: center;
+  text-align: center;
+  background: radial-gradient(ellipse at 50% 0%, #0d2a2a 0%, #050607 55%, #000 100%);
+}
+
+.hook h1 {
+  margin: 0;
+  font-family: "Inter Display", "Inter", sans-serif;
+  font-weight: 800;
+  font-size: 108px;
+  letter-spacing: -3px;
+  line-height: 1.08;
+}
+
+.hook-notch {
+  position: absolute;
+  top: 0;
+  left: calc(50% - 160px);
+  width: 320px;
+  height: 64px;
+  background: #000;
+  border-radius: 0 0 28px 28px;
+  box-shadow: 0 0 80px rgba(61, 214, 208, 0.16);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 26px;
+}
+
+.hook-notch i {
+  width: 13px;
+  height: 30px;
+  border-radius: 8px;
+  background: #3dd6d0;
+  box-shadow: 0 0 14px #3dd6d0;
+}
+
+/* ---------- 2-4. Escritorio ---------- */
+
+.desktop {
+  background: #000;
+}
+
+.stage {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+
+.wallpaper {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 28%, #3b6ea8 0%, transparent 45%),
+    radial-gradient(circle at 82% 22%, #6d4ba8 0%, transparent 42%),
+    radial-gradient(circle at 70% 85%, #1f8f8a 0%, transparent 48%),
+    radial-gradient(circle at 25% 90%, #a8576d 0%, transparent 40%),
+    linear-gradient(135deg, #1b2440, #2a1f3d 50%, #13303a);
+}
+
+.menubar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  padding: 0 22px;
+  font-size: 15px;
+  color: #fff;
+  background: rgba(20, 20, 30, 0.28);
+  backdrop-filter: blur(20px);
+}
+
+.menubar .apple {
+  width: 14px;
+  height: 16px;
+  border-radius: 7px 7px 6px 6px;
+  background: #fff;
+}
+
+.menubar .spacer {
+  flex: 1;
+}
+
+.menubar .status {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.battery {
+  width: 24px;
+  height: 11px;
+  border: 1.5px solid #fff;
+  border-radius: 3px;
+  position: relative;
+}
+
+.battery::after {
+  content: "";
+  position: absolute;
+  inset: 1.5px 7px 1.5px 1.5px;
+  background: #fff;
+  border-radius: 1px;
+}
+
+.notch {
+  position: absolute;
+  top: 0;
+  left: calc(50% - 100px);
+  width: 200px;
+  height: 34px;
+  background: #000;
+  border-radius: 0 0 12px 12px;
+}
+
+.appwin {
+  position: absolute;
+  left: 260px;
+  top: 190px;
+  width: 1100px;
+  height: 640px;
+  border-radius: 16px;
+  overflow: hidden;
+  background: #f7f7f5;
+  color: #1d1d1f;
+  box-shadow: 0 40px 90px rgba(0, 0, 0, 0.45);
+}
+
+.appwin-bar {
+  height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 18px;
+  background: #ececea;
+  border-bottom: 1px solid #ddd;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.appwin-bar i {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #ff5f57;
+}
+
+.appwin-bar i:nth-child(2) {
+  background: #febc2e;
+}
+
+.appwin-bar i:nth-child(3) {
+  background: #28c840;
+}
+
+.appwin-bar span {
+  margin-left: 14px;
+}
+
+.appwin-body {
+  display: flex;
+  gap: 50px;
+  padding: 44px 48px;
+}
+
+.appwin table {
+  border-collapse: collapse;
+  font-size: 20px;
+  width: 470px;
+}
+
+.appwin th,
+.appwin td {
+  text-align: left;
+  padding: 14px 16px;
+  border-bottom: 1px solid #e3e1dc;
+}
+
+.appwin th {
+  color: #6b6860;
+  font-weight: 600;
+  font-size: 16px;
+}
+
+.appwin tr.hl td {
+  background: #fff2f0;
+  color: #c4373b;
+  font-weight: 700;
+}
+
+.chart {
+  display: flex;
+  align-items: flex-end;
+  gap: 26px;
+  height: 260px;
+  margin-top: 30px;
+}
+
+.bar-wrap {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  font-size: 16px;
+  color: #6b6860;
+}
+
+.bar {
+  width: 70px;
+  border-radius: 10px 10px 4px 4px;
+  background: linear-gradient(#5b8def, #3b6ad1);
+}
+
+.bar.low {
+  background: linear-gradient(#ff8a8d, #e5484d);
+}
+
+.dock {
+  position: absolute;
+  bottom: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 14px;
+  padding: 12px 16px;
+  border-radius: 26px;
+  background: rgba(255, 255, 255, 0.18);
+  backdrop-filter: blur(24px);
+}
+
+.dock i {
+  width: 62px;
+  height: 62px;
+  border-radius: 16px;
+  opacity: 0.9;
+}
+
+.promo-island {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 420px;
+  transform: translateX(-50%);
+  font-size: 13px;
+  color: #f2f0eb;
+}
+
+.promo-island .icon-button {
+  font-size: 13px;
+}
+
+.promo-messages {
+  justify-content: flex-end;
+  overflow: hidden;
+}
+
+.promo-bubble p {
+  line-height: 1.45;
+}
+
+.promo-input {
+  min-height: 18px;
+  padding: 9px 12px;
+  border-radius: 14px;
+  background: #15171a;
+  border: 1px solid #2a2d33;
+  display: flex;
+  align-items: center;
+}
+
+.promo-input.typing-now {
+  border-color: var(--accent, #3dd6d0);
+}
+
+.promo-input .placeholder {
+  color: #6b6860;
+}
+
+.caret {
+  display: inline-block;
+  width: 1.5px;
+  height: 15px;
+  margin-left: 1px;
+  background: #3dd6d0;
+}
+
+.pill-button.pressed {
+  background: #3dd6d0;
+  color: #0b0c0e;
+}
+
+.thumb-screen {
+  width: 96px;
+  height: 54px;
+  border-radius: 6px;
+  overflow: hidden;
+  position: relative;
+  flex: none;
+  margin-bottom: 6px;
+}
+
+.capture-attachment .thumb-screen {
+  margin: 0;
+}
+
+.thumb-inner {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 1920px;
+  height: 1080px;
+  transform: scale(0.05);
+  transform-origin: 0 0;
+}
+
+.cursor {
+  position: absolute;
+  z-index: 10;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.4));
+}
+
+.caption {
+  position: absolute;
+  left: 110px;
+  bottom: 110px;
+  display: grid;
+  gap: 10px;
+  padding: 26px 34px;
+  border-radius: 26px;
+  background: rgba(10, 12, 14, 0.62);
+  backdrop-filter: blur(26px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 20;
+}
+
+.caption strong {
+  font-family: "Inter Display", "Inter", sans-serif;
+  font-size: 58px;
+  font-weight: 800;
+  letter-spacing: -1.5px;
+}
+
+.caption span {
+  font-size: 26px;
+  color: #c9c6bf;
+}
+
+.keycaps {
+  position: absolute;
+  right: 140px;
+  bottom: 130px;
+  display: flex;
+  gap: 16px;
+  z-index: 20;
+}
+
+.keycaps kbd {
+  min-width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+  border-radius: 22px;
+  font-family: "DejaVu Sans", "Inter", sans-serif;
+  font-size: 46px;
+  color: #f2f0eb;
+  background: linear-gradient(#2a2d33, #16181b);
+  border: 1px solid #3a3e45;
+  box-shadow:
+    0 8px 0 #0c0d0f,
+    0 18px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* ---------- 5. Personaje ---------- */
+
+.character {
+  background: radial-gradient(ellipse at 35% 50%, #10302f 0%, #07090a 60%, #000 100%);
+}
+
+.character-glow {
+  position: absolute;
+  left: 220px;
+  top: 190px;
+  width: 700px;
+  height: 700px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(61, 214, 208, 0.18), transparent 65%);
+}
+
+.character-tico {
+  position: absolute;
+  left: 290px;
+  top: 250px;
+}
+
+.character-copy {
+  position: absolute;
+  left: 1000px;
+  top: 340px;
+  display: grid;
+  gap: 18px;
+}
+
+.character-copy .eyebrow {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 600;
+  color: #3dd6d0;
+  letter-spacing: 0.5px;
+}
+
+.character-copy h2 {
+  margin: 0;
+  font-family: "Inter Display", "Inter", sans-serif;
+  font-size: 150px;
+  font-weight: 900;
+  letter-spacing: -5px;
+  line-height: 1;
+}
+
+.character-copy .small {
+  margin: 0;
+  font-size: 26px;
+  color: #9b978e;
+}
+
+/* ---------- 6. Ventajas ---------- */
+
+.features {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 64px;
+  background: radial-gradient(ellipse at 50% 30%, #161a20 0%, #050607 70%);
+}
+
+.features h2 {
+  margin: 0;
+  font-family: "Inter Display", "Inter", sans-serif;
+  font-size: 84px;
+  font-weight: 800;
+  letter-spacing: -2.5px;
+}
+
+.dim {
+  color: #6b6860;
+}
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 640px);
+  gap: 28px;
+}
+
+.feature {
+  display: grid;
+  gap: 12px;
+  padding: 36px 40px;
+  border-radius: 30px;
+  background: linear-gradient(160deg, #1a1d22, #111316);
+  border: 1px solid #2a2d33;
+}
+
+.feature-icon {
+  font-family: "DejaVu Sans", sans-serif;
+  font-size: 34px;
+  color: #3dd6d0;
+}
+
+.feature strong {
+  font-size: 34px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+}
+
+.feature span:last-child {
+  font-size: 24px;
+  color: #9b978e;
+}
+
+/* ---------- 7. Cierre ---------- */
+
+.endcard {
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 8px;
+  background: radial-gradient(ellipse at 50% 35%, #0f2b2a 0%, #050607 60%, #000 100%);
+}
+
+.end-tico {
+  height: 330px;
+  margin-bottom: 4px;
+}
+
+.wordmark {
+  margin: 0;
+  font-family: "Inter Display", "Inter", sans-serif;
+  font-weight: 900;
+  font-size: 190px;
+  letter-spacing: 18px;
+  line-height: 1;
+  padding-left: 18px;
+}
+
+.tagline {
+  margin: 10px 0 0;
+  font-size: 44px;
+  font-weight: 500;
+  color: #c9c6bf;
+}
+
+.cta {
+  margin: 34px 0 0;
+  padding: 20px 44px;
+  border-radius: 999px;
+  background: #3dd6d0;
+  color: #061212;
+  font-size: 32px;
+  font-weight: 800;
+}
+
+/*
+ * En el render fotograma a fotograma, las animaciones CSS no avanzan con el tiempo
+ * virtual: las desactivamos (todo lo que se mueve va por la línea de tiempo en JS).
+ */
+.promo *,
+.promo *::before,
+.promo *::after {
+  animation: none !important;
+  transition: none !important;
+}
+
+.caption.center {
+  left: 50%;
+  bottom: 70px;
+  text-align: center;
+  justify-items: center;
+  translate: -50% 0;
+}

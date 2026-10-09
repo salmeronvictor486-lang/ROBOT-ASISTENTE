@@ -6,3 +6,5 @@ dist/
 !.vscode/extensions.json
 .idea/
 *.local
+# El audio del anuncio se regenera con scripts/promo-music.py (va dentro del .mp4)
+promo/*.wav

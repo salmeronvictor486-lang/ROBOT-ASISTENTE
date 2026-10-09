@@ -147,6 +147,15 @@ src-tauri/src/
 25. **Respuestas con formato**: `src/island/markdown.ts` convierte el Markdown básico en
     elementos de React (sin `dangerouslySetInnerHTML`), con botón de copiar.
 
+## Anuncio (`promo/`)
+`promo.html` + `src/promo/` dibujan el anuncio de 35 s con los componentes reales (Tico,
+cápsula, notch, Markdown); todo depende de `t`. `scripts/render-promo.mjs` lo renderiza
+fotograma a fotograma a 60 fps con el tiempo virtual de Chrome (BeginFrame) y
+`scripts/promo-music.py` sintetiza la música y los efectos. `npm run promo` lo regenera
+(necesita `npm run dev` arrancado, ffmpeg y numpy). En el render, las animaciones CSS no
+avanzan: dentro de `.promo` están desactivadas y todo se anima desde la línea de tiempo.
+Los bucles de animación usan `performance.now()` (no el argumento de rAF) por lo mismo.
+
 ## Licencias
 Código: MIT (`LICENSE`). Tico, su nombre, su diseño y sus sonidos: todos los derechos
 reservados (`ASSETS-LICENSE.md`).

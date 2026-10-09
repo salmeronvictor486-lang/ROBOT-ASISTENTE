@@ -12,7 +12,8 @@
     "typecheck": "tsc -b",
     "lint": "eslint .",
     "test": "vitest run --passWithNoTests",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "promo": "python3 scripts/promo-music.py promo/tico-anuncio.wav && node scripts/render-promo.mjs promo/tico-anuncio.mp4 promo/tico-anuncio.wav"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.12.1",
@@ -29,6 +30,7 @@
     "eslint": "^10.12.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.13.0",
+    "puppeteer-core": "^24.43.1",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.71.1",
     "vite": "^8.3.3",
