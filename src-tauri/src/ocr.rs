@@ -65,7 +65,14 @@ fn recognize_impl(image: &RgbaImage) -> Option<String> {
     let buffer = writer.DetachBuffer().ok()?;
     let bitmap =
         SoftwareBitmap::CreateCopyFromBuffer(&buffer, BitmapPixelFormat::Bgra8, w as i32, h as i32).ok()?;
-    let engine = OcrEngine::TryCreateFromUserProfileLanguages().ok()?;
+    // El idioma de Windows; si no tiene OCR instalado, el primero que haya.
+    let engine = OcrEngine::TryCreateFromUserProfileLanguages().ok().or_else(|| {
+        let languages = OcrEngine::AvailableRecognizerLanguages().ok()?;
+        (0..languages.Size().ok()?).find_map(|i| {
+            let language = languages.GetAt(i).ok()?;
+            OcrEngine::TryCreateFromLanguage(&language).ok()
+        })
+    })?;
     let result = engine.RecognizeAsync(&bitmap).ok()?.join().ok()?;
     let lines = result.Lines().ok()?;
     let mut out = Vec::new();

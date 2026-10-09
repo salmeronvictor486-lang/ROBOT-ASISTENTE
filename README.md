@@ -19,7 +19,8 @@ chatea contigo y, solo cuando tú se lo pides, mira tu pantalla para ayudarte.
 - **La isla**: aparece al dejar el ratón en el borde superior (zona central), crece al
   pasar por encima y se abre al hacer clic. Tiene tres pestañas: **Inicio** (Tico, atajos
   rápidos y tus Ticos), **Chat** y **Archivos**. Fuera de la cápsula, los clics pasan a las
-  apps de debajo. `Ctrl/⌘ + Mayús + Espacio` la abre para escribir y `Esc` la cierra.
+  apps de debajo. `Ctrl/⌘ + Mayús + Espacio` la abre para escribir, `Ctrl/⌘ + 1, 2, 3`
+  cambian de pestaña y `Esc` la cierra.
 - **Varios Ticos, uno para cada tarea**: vienen cinco de serie (Tico, Código, Traductor,
   Escritor y Profe) y puedes crear hasta 12. Cada uno tiene su nombre, sus colores, su ropa,
   su forma de responder y, si quieres, su propia IA. Cada uno guarda su conversación.

@@ -324,6 +324,11 @@ function Island({ settings }: { settings: Settings }) {
         } else sendMessage(draft.trim() || t("island.defaultQuestion"), preview, files);
       } catch (e) {
         chat.notify(toAppError(e));
+        // Si lo había pedido con palabras, se lo devolvemos al cuadro de texto para no perderlo.
+        if (question) {
+          setDraft(question);
+          focusInput();
+        }
       } finally {
         setCapturing(false);
       }
@@ -397,10 +402,16 @@ function Island({ settings }: { settings: Settings }) {
     return () => window.clearTimeout(id);
   }, [ctx.state, ctx.pointerInside]);
 
-  // Esc cierra la isla.
+  // Esc cierra la isla; Ctrl/⌘ + 1, 2, 3 cambian de pestaña.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") dispatch({ type: "escape" });
+      const tabs: Record<string, Tab> = { "1": "home", "2": "chat", "3": "files" };
+      const next = tabs[e.key];
+      if ((e.ctrlKey || e.metaKey) && next) {
+        e.preventDefault();
+        setTab(next);
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
