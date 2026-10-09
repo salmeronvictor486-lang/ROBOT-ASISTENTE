@@ -24,6 +24,7 @@ export function Playground() {
   const [size, setSize] = useState(220);
   const [bounce, setBounce] = useState(0);
   const [shake, setShake] = useState(0);
+  const [wave, setWave] = useState(0);
 
   // Los ojos siguen al ratón.
   useEffect(() => {
@@ -55,6 +56,7 @@ export function Playground() {
           expression={expression}
           bounce={bounce}
           shake={shake}
+          wave={wave}
         />
       </div>
       <div className="buttons">
@@ -68,6 +70,9 @@ export function Playground() {
             {LABELS[e]}
           </button>
         ))}
+        <button type="button" onClick={() => setWave((w) => w + 1)}>
+          Saludar
+        </button>
         <button type="button" onClick={() => setShake((s) => s + 1)}>
           Sacudir
         </button>
