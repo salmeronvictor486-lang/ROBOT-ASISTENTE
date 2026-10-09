@@ -618,6 +618,19 @@ impl<'a> Writer<'a> {
                 .map(|(_, _, _, laid)| laid.iter().map(|(_, ls, sa)| ls.iter().map(|l| l.height).sum::<f32>() + sa).sum::<f32>())
                 .fold(0.0f32, f32::max)
                 + CELL_PAD_Y * 2.0;
+            // Fila más alta que una página entera (formularios, CV maquetados con tablas):
+            // no cabe en ningún sitio, así que su contenido sigue como texto normal por las
+            // páginas que haga falta, en vez de cortarse.
+            let page_room = self.bottom() - self.page.margin_top;
+            if row_h > page_room {
+                for cell in row {
+                    for p in &cell.paragraphs {
+                        self.paragraph(p);
+                    }
+                }
+                self.previous = None;
+                continue;
+            }
             if self.y + row_h > self.bottom() && self.started {
                 self.new_page();
             }
@@ -1019,6 +1032,27 @@ mod tests {
             + String::from_utf8_lossy(&pdf).matches("/Type /Page>>").count()
             + String::from_utf8_lossy(&pdf).matches("/Type /Page ").count();
         assert!(pages >= 2, "esperaba varias páginas, hay {pages}");
+    }
+
+    #[test]
+    fn huge_table_row_flows_across_pages() {
+        if !has_fonts() {
+            return;
+        }
+        let paragraph = |i: usize| Paragraph {
+            inlines: vec![Inline::Text(format!("Línea {i}"), TextStyle::default())],
+            line: 1.0,
+            ..Paragraph::default()
+        };
+        let cell = super::super::docx::Cell { paragraphs: (0..300).map(paragraph).collect(), span: 1 };
+        let doc = Document {
+            page: PageSetup::default(),
+            blocks: vec![Block::Table(Table { columns: Vec::new(), rows: vec![vec![cell]] })],
+        };
+        let pdf = render(&doc, "Tabla").unwrap();
+        let text = String::from_utf8_lossy(&pdf);
+        let pages = text.matches("/Type /Page").count() - text.matches("/Type /Pages").count();
+        assert!(pages >= 5, "solo {pages} páginas: se ha cortado la fila");
     }
 
     #[test]

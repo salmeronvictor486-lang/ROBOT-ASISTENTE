@@ -431,6 +431,8 @@ fn parse_rpr(r: &mut Reader<&[u8]>) -> RunProps {
     let mut p = RunProps::default();
     loop {
         match r.read_event() {
+            // Control de cambios: es el formato de ANTES del cambio; no cuenta.
+            Ok(Event::Start(e)) if local(&e).as_slice() == b"rPrChange" => skip(r, &e),
             Ok(Event::Start(e)) | Ok(Event::Empty(e)) => match local(&e).as_slice() {
                 b"b" => p.bold = Some(on_off(&e)),
                 b"i" => p.italic = Some(on_off(&e)),
@@ -512,7 +514,7 @@ fn parse_ppr(r: &mut Reader<&[u8]>, page: &mut Option<PageSetup>) -> ParaProps {
                 b"contextualSpacing" => p.contextual = Some(on_off(&e)),
                 // La marca de párrafo tiene su propio formato (y "spacing" ahí significa otra
                 // cosa): no nos interesa.
-                b"rPr" if is_start => skip(r, &e),
+                b"rPr" | b"pPrChange" | b"sectPrChange" if is_start => skip(r, &e),
                 b"sectPr" if is_start => {
                     let setup = parse_sect(r);
                     page.get_or_insert(setup);
@@ -527,6 +529,7 @@ fn parse_sect(r: &mut Reader<&[u8]>) -> PageSetup {
     let mut page = PageSetup::default();
     loop {
         match r.read_event() {
+            Ok(Event::Start(e)) if local(&e).as_slice() == b"sectPrChange" => skip(r, &e),
             Ok(Event::Start(e)) | Ok(Event::Empty(e)) => match local(&e).as_slice() {
                 b"pgSz" => {
                     if let (Some(w), Some(h)) = (twips(attr(&e, "w")), twips(attr(&e, "h"))) {
@@ -803,8 +806,12 @@ fn heading_size(level: u8) -> f32 {
 fn parse_drawing(r: &mut Reader<&[u8]>, ctx: &mut Ctx) -> Option<Image> {
     let mut size: Option<(f32, f32)> = None;
     let mut embed: Option<String> = None;
+    // Un cuadro de texto puede llevar otro dibujo dentro: contamos para no salir antes de tiempo.
+    let mut depth = 0usize;
     loop {
         match r.read_event() {
+            Ok(Event::Start(e)) if local(&e).as_slice() == b"drawing" => depth += 1,
+            Ok(Event::End(e)) if e.local_name().as_ref() == b"drawing" && depth > 0 => depth -= 1,
             Ok(Event::Start(e)) | Ok(Event::Empty(e)) => match local(&e).as_slice() {
                 b"extent" if size.is_none() => {
                     let cx = attr(&e, "cx").and_then(|v| v.parse::<f32>().ok());
@@ -1037,7 +1044,7 @@ fn parse_table(r: &mut Reader<&[u8]>, ctx: &mut Ctx) -> Table {
                         }
                     }
                 }
-                b"tblPr" | b"trPr" | b"tblPrEx" => skip(r, &e),
+                b"tblPr" | b"trPr" | b"tblPrEx" | b"tblGridChange" | b"tblPrChange" => skip(r, &e),
                 _ => {}
             },
             Ok(Event::End(e)) => match e.local_name().as_ref() {
@@ -1233,6 +1240,28 @@ pub mod tests {
         ))
         .unwrap();
         assert_eq!(doc.plain_text().trim(), "sí");
+    }
+
+    #[test]
+    fn ignores_old_formatting_from_tracked_changes() {
+        let doc = parse(&make_docx(
+            r#"<w:p><w:pPr><w:jc w:val="center"/><w:pPrChange w:id="1"><w:pPr><w:jc w:val="left"/></w:pPr></w:pPrChange></w:pPr>
+               <w:r><w:rPr><w:i/><w:rPrChange w:id="2"><w:rPr><w:b/></w:rPr></w:rPrChange></w:rPr><w:t>hola</w:t></w:r></w:p>"#,
+        ))
+        .unwrap();
+        let ps = paragraphs(&doc);
+        assert_eq!(ps[0].align, Align::Center);
+        let Inline::Text(_, style) = &ps[0].inlines[0] else { panic!() };
+        assert!(style.italic && !style.bold);
+    }
+
+    #[test]
+    fn text_after_a_textbox_with_an_image_is_kept() {
+        let doc = parse(&make_docx(
+            r#"<w:p><w:r><w:t>antes </w:t></w:r><w:r><w:drawing><wp:anchor><a:graphic><wps:txbx><w:txbxContent><w:p><w:r><w:drawing><wp:inline/></w:drawing></w:r></w:p></w:txbxContent></wps:txbx></a:graphic></wp:anchor></w:drawing></w:r><w:r><w:t>después</w:t></w:r></w:p>"#,
+        ))
+        .unwrap();
+        assert!(doc.plain_text().contains("después"));
     }
 
     #[test]

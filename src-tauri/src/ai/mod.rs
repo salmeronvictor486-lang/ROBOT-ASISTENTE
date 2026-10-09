@@ -30,8 +30,12 @@ pub enum Role {
     Assistant,
 }
 
+/// Número único de cada mensaje (para encontrarlo en el historial aunque se mueva).
+static NEXT_MESSAGE_ID: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
 #[derive(Clone, Debug)]
 pub struct ChatMessage {
+    pub id: u64,
     pub role: Role,
     /// Lo que escribió el usuario (o la respuesta de Tico).
     pub text: String,
@@ -42,12 +46,29 @@ pub struct ChatMessage {
 
 impl ChatMessage {
     pub fn user(text: String, context: String, images: Vec<Arc<ImageData>>) -> Self {
-        Self { role: Role::User, text, context, images }
+        let id = NEXT_MESSAGE_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        Self { id, role: Role::User, text, context, images }
     }
 
     pub fn assistant(text: String) -> Self {
-        Self { role: Role::Assistant, text, context: String::new(), images: Vec::new() }
+        let id = NEXT_MESSAGE_ID.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        Self { id, role: Role::Assistant, text, context: String::new(), images: Vec::new() }
     }
+}
+
+/// Lo que se manda a la IA: los turnos tienen que alternar (usuario, asistente…). Si una
+/// pregunta se quedó sin respuesta (cancelada o fallida), no se manda.
+pub fn alternating(history: &[ChatMessage]) -> Vec<ChatMessage> {
+    let mut out: Vec<ChatMessage> = Vec::with_capacity(history.len());
+    for message in history {
+        if let Some(last) = out.last() {
+            if last.role == message.role {
+                out.pop();
+            }
+        }
+        out.push(message.clone());
+    }
+    out
 }
 
 #[derive(Clone)]
@@ -299,6 +320,18 @@ mod tests {
         assert!(r.images_for(0).is_empty());
         assert_eq!(r.images_for(2).len(), 1);
         assert!(r.images_for(4).is_empty());
+    }
+
+    #[test]
+    fn unanswered_questions_are_dropped() {
+        let h = vec![
+            ChatMessage::user("q1".into(), String::new(), Vec::new()),
+            ChatMessage::user("q2".into(), String::new(), Vec::new()),
+            ChatMessage::assistant("a2".into()),
+            ChatMessage::user("q3".into(), String::new(), Vec::new()),
+        ];
+        let texts: Vec<String> = alternating(&h).into_iter().map(|m| m.text).collect();
+        assert_eq!(texts, ["q2", "a2", "q3"]);
     }
 
     #[test]

@@ -14,7 +14,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::ai::models::{resolve_model, resolve_ollama_model};
 use crate::ai::router::{self, AnyProvider};
-use crate::ai::{system_prompt, ChatMessage, ChatRequest, ImageData, Provider};
+use crate::ai::{alternating, system_prompt, ChatMessage, ChatRequest, ImageData, Provider};
 use crate::error::{AppError, AppResult};
 use crate::files;
 use crate::island::lock;
@@ -165,6 +165,11 @@ pub async fn chat_send(
     options: SendOptions,
     on_event: Channel<ChatEvent>,
 ) -> AppResult<()> {
+    // El número de envío se coge lo primero: si el usuario pulsa Parar mientras leemos los
+    // adjuntos (OCR, PDF…), este envío ya sabe que está cancelado.
+    let generation = state.chat_generation.fetch_add(1, Ordering::SeqCst) + 1;
+    let current = &state.chat_generation;
+    let cancelled = move || current.load(Ordering::SeqCst) != generation;
     let settings: Settings = lock(&state.settings).clone();
     let tico = settings.tico(&options.tico);
     let (kind, model) = settings.provider_for(&tico);
@@ -201,12 +206,16 @@ pub async fn chat_send(
         }
     }
 
-    let generation = state.chat_generation.fetch_add(1, Ordering::SeqCst) + 1;
-    let (messages, my_index) = {
+    if cancelled() {
+        return Ok(());
+    }
+    let question = ChatMessage::user(options.text.clone(), context, images);
+    let my_id = question.id;
+    let messages = {
         let mut chats = lock(&state.chat);
         let history = chats.entry(tico.id.clone()).or_default();
-        history.push(ChatMessage::user(options.text.clone(), context, images));
-        (history.clone(), history.len() - 1)
+        history.push(question);
+        alternating(history)
     };
     let request = ChatRequest {
         model,
@@ -218,8 +227,6 @@ pub async fn chat_send(
     let emitted = AtomicUsize::new(0);
     let mut answer = String::new();
     let result = {
-        let current = &state.chat_generation;
-        let cancelled = move || current.load(Ordering::SeqCst) != generation;
         let answer = &mut answer;
         let channel = &on_event;
         let emitted_ref = &emitted;
@@ -232,24 +239,34 @@ pub async fn chat_send(
             answer.push_str(token);
             channel.send(ChatEvent::Token { text: token.to_string() }).is_ok()
         };
-        run_with_recovery(
+        let run = run_with_recovery(
             &app, &state.http, &provider, kind, &tico.id, request, &emitted, &cancelled, &on_event, &mut sink,
-        )
-        .await
+        );
+        // Parar corta la petición en el momento (sin esperar a la siguiente palabra), así
+        // no se sigue gastando.
+        let watch = async {
+            while !cancelled() {
+                tokio::time::sleep(std::time::Duration::from_millis(150)).await;
+            }
+        };
+        tokio::select! {
+            result = run => result,
+            () = watch => Ok(()),
+        }
     };
 
     {
         let mut chats = lock(&state.chat);
         let history = chats.entry(tico.id.clone()).or_default();
-        let mine_is_last = history.len() == my_index + 1;
-        if answer.is_empty() {
-            // Sin respuesta: quitamos la pregunta para no dejar dos turnos de usuario seguidos.
-            if mine_is_last {
-                history.pop();
+        // Buscamos la pregunta por su número: otro envío puede haber movido las posiciones.
+        if let Some(pos) = history.iter().position(|m| m.id == my_id) {
+            if answer.is_empty() {
+                // Sin respuesta: fuera la pregunta, para no dejar dos turnos de usuario seguidos.
+                history.remove(pos);
+            } else {
+                // Aunque se haya cancelado, lo recibido se queda (justo detrás de la pregunta).
+                history.insert(pos + 1, ChatMessage::assistant(answer));
             }
-        } else if history.len() > my_index {
-            // Aunque se haya cancelado, lo recibido se queda (justo detrás de la pregunta).
-            history.insert(my_index + 1, ChatMessage::assistant(answer));
         }
     }
     result?;

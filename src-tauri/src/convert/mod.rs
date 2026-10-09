@@ -55,43 +55,49 @@ pub fn unique_pdf_path(dir: &Path, stem: &str) -> PathBuf {
         .unwrap_or(first)
 }
 
-/// Ejecuta un programa con un tiempo máximo. Devuelve si ha terminado bien.
-fn run(mut cmd: Command) -> bool {
+/// Ejecuta un programa con un tiempo máximo. Devuelve lo que ha escrito si ha terminado
+/// bien (`capture`), o una cadena vacía si no se pedía; `None` si ha fallado o tardado demasiado.
+fn run_with_timeout(mut cmd: Command, capture: bool) -> Option<String> {
     #[cfg(target_os = "windows")]
     {
         use std::os::windows::process::CommandExt;
         // Sin ventana negra de consola.
         cmd.creation_flags(0x0800_0000);
     }
-    cmd.stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null());
-    let Ok(mut child) = cmd.spawn() else { return false };
+    let stdout = if capture { std::process::Stdio::piped() } else { std::process::Stdio::null() };
+    cmd.stdin(std::process::Stdio::null()).stdout(stdout).stderr(std::process::Stdio::null());
+    let mut child = cmd.spawn().ok()?;
     let start = Instant::now();
     loop {
         match child.try_wait() {
-            Ok(Some(status)) => return status.success(),
+            Ok(Some(status)) if status.success() => {
+                let mut text = String::new();
+                if let Some(mut out) = child.stdout.take() {
+                    use std::io::Read;
+                    out.read_to_string(&mut text).ok()?;
+                }
+                return Some(text.trim().to_string());
+            }
+            Ok(Some(_)) | Err(_) => return None,
             Ok(None) if start.elapsed() > TIMEOUT => {
                 let _ = child.kill();
                 let _ = child.wait();
-                return false;
+                return None;
             }
             Ok(None) => std::thread::sleep(Duration::from_millis(120)),
-            Err(_) => return false,
         }
     }
 }
 
+/// Ejecuta un programa con un tiempo máximo. Devuelve si ha terminado bien.
+fn run(cmd: Command) -> bool {
+    run_with_timeout(cmd, false).is_some()
+}
+
 /// Igual que `run`, pero devolviendo lo que el programa escribe (para preguntar cosas).
 #[cfg(any(target_os = "windows", target_os = "macos"))]
-fn output_of(mut cmd: Command) -> Option<String> {
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::process::CommandExt;
-        cmd.creation_flags(0x0800_0000);
-    }
-    let out = cmd.stdin(std::process::Stdio::null()).output().ok()?;
-    out.status.success().then(|| String::from_utf8_lossy(&out.stdout).trim().to_string())
+fn output_of(cmd: Command) -> Option<String> {
+    run_with_timeout(cmd, true)
 }
 
 fn produced(out: &Path) -> bool {
@@ -103,7 +109,9 @@ fn produced(out: &Path) -> bool {
 #[cfg(target_os = "windows")]
 fn powershell(script: &str, envs: &[(&str, &Path)]) -> Command {
     let mut cmd = Command::new("powershell.exe");
-    cmd.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script]);
+    // Salida en UTF-8: si no, las rutas con acentos (José, Currículum) llegan estropeadas.
+    let script = format!("[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n{script}");
+    cmd.args(["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-Command", script.as_str()]);
     // Las rutas van en variables de entorno: así un nombre raro no puede romper el script.
     for (key, value) in envs {
         cmd.env(key, value);
@@ -438,6 +446,10 @@ fn convert_active(app: &AppHandle) -> AppResult<ConvertResult> {
     #[cfg(target_os = "macos")]
     if let Some((full, name)) = active_mac_document() {
         let path = PathBuf::from(&full);
+        // Sin guardar o en la nube: no hay archivo que convertir; que elija uno.
+        if !path.is_file() {
+            return Err(AppError::NoDocument);
+        }
         let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or(name.clone());
         let out = unique_pdf_path(&output_dir(app, Some(&path)), &stem);
         let engine = convert_file(&path, &out)?;

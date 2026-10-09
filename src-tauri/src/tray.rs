@@ -52,29 +52,37 @@ pub fn create(app: &AppHandle, lang: &str) -> tauri::Result<()> {
         .tooltip("Tico")
         .menu(&build_menu(app, lang)?)
         .on_menu_event(|app, event| {
-            let result = match event.id().as_ref() {
-                "open" => {
-                    open_from_shortcut(app, "open");
-                    Ok(())
-                }
-                "pet" => toggle_pet(app),
-                "settings" => open_window(app, "settings"),
-                "playground" => open_window(app, "playground"),
-                "quit" => {
-                    app.exit(0);
-                    Ok(())
-                }
-                _ => Ok(()),
-            };
-            if let Err(err) = result {
-                eprintln!("Error del menú de la bandeja: {err}");
-            }
+            // Algunas opciones crean ventanas; en Windows eso no puede hacerse dentro de este
+            // manejador (se bloquearía), así que lo hacemos en otro hilo.
+            let app = app.clone();
+            let id = event.id().as_ref().to_string();
+            std::thread::spawn(move || handle_menu(&app, &id));
         });
     if let Some(icon) = app.default_window_icon() {
         builder = builder.icon(icon.clone());
     }
     builder.build(app)?;
     Ok(())
+}
+
+fn handle_menu(app: &AppHandle, id: &str) {
+    let result = match id {
+        "open" => {
+            open_from_shortcut(app, "open");
+            Ok(())
+        }
+        "pet" => toggle_pet(app),
+        "settings" => open_window(app, "settings"),
+        "playground" => open_window(app, "playground"),
+        "quit" => {
+            app.exit(0);
+            Ok(())
+        }
+        _ => Ok(()),
+    };
+    if let Err(err) = result {
+        eprintln!("Error del menú de la bandeja: {err}");
+    }
 }
 
 /// Cambia el idioma del menú.

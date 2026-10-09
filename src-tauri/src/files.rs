@@ -216,22 +216,28 @@ pub fn xlsx_rows(bytes: &[u8]) -> AppResult<Vec<(String, Vec<Vec<String>>)>> {
     let mut out = Vec::new();
     for (i, sheet) in sheets.iter().enumerate() {
         let Some(xml) = docx::zip_text(&mut zip, sheet) else { continue };
-        let mut rows = Vec::new();
+        let mut rows: Vec<Vec<String>> = Vec::new();
         let mut row: Vec<String> = Vec::new();
         let mut cell_type = String::new();
+        let mut cell_col: Option<usize> = None;
         let mut value = String::new();
         let mut in_value = false;
         let mut r = Reader::from_str(&xml);
         loop {
             match r.read_event() {
                 Ok(Event::Start(e)) => match e.local_name().as_ref() {
+                    b"row" => {
+                        // Excel no guarda las filas vacías: las rellenamos para no descuadrar.
+                        let number = attr_of(&e, b"r").and_then(|r| r.parse::<usize>().ok());
+                        if let Some(n) = number {
+                            while rows.len() + 1 < n {
+                                rows.push(Vec::new());
+                            }
+                        }
+                    }
                     b"c" => {
-                        cell_type = e
-                            .attributes()
-                            .flatten()
-                            .find(|a| a.key.local_name().as_ref() == b"t")
-                            .map(|a| String::from_utf8_lossy(&a.value).into_owned())
-                            .unwrap_or_default();
+                        cell_type = attr_of(&e, b"t").unwrap_or_default();
+                        cell_col = attr_of(&e, b"r").and_then(|r| column_index(&r));
                         value.clear();
                     }
                     b"v" | b"t" => in_value = true,
@@ -249,6 +255,12 @@ pub fn xlsx_rows(bytes: &[u8]) -> AppResult<Vec<(String, Vec<Vec<String>>)>> {
                         } else {
                             value.clone()
                         };
+                        // Tampoco guarda las celdas vacías: la referencia ("C2") dice su columna.
+                        if let Some(col) = cell_col.filter(|c| *c < 16_384) {
+                            while row.len() < col {
+                                row.push(String::new());
+                            }
+                        }
                         row.push(text);
                     }
                     b"row" => rows.push(std::mem::take(&mut row)),
@@ -262,6 +274,27 @@ pub fn xlsx_rows(bytes: &[u8]) -> AppResult<Vec<(String, Vec<Vec<String>>)>> {
         out.push((name, rows));
     }
     Ok(out)
+}
+
+/// Valor de un atributo por su nombre local.
+fn attr_of(e: &quick_xml::events::BytesStart, name: &[u8]) -> Option<String> {
+    e.attributes()
+        .flatten()
+        .find(|a| a.key.local_name().as_ref() == name)
+        .map(|a| String::from_utf8_lossy(&a.value).into_owned())
+}
+
+/// Columna (empezando en 0) de una referencia de celda: "A1" → 0, "C2" → 2, "AA10" → 26.
+fn column_index(reference: &str) -> Option<usize> {
+    let letters: String = reference.chars().take_while(char::is_ascii_alphabetic).collect();
+    if letters.is_empty() {
+        return None;
+    }
+    let n = letters
+        .to_ascii_uppercase()
+        .bytes()
+        .fold(0usize, |acc, b| acc * 26 + usize::from(b - b'A' + 1));
+    Some(n - 1)
 }
 
 /// Filas de un CSV/TSV (separador detectado: coma, punto y coma o tabulador).
@@ -417,24 +450,39 @@ fn cp1252(b: u8) -> char {
     }
 }
 
+/// ¿Empieza `text` por `prefix` (sin distinguir mayúsculas)? Las etiquetas son ASCII.
+fn starts_with_ci(text: &str, prefix: &str) -> bool {
+    text.as_bytes()
+        .get(..prefix.len())
+        .is_some_and(|head| head.eq_ignore_ascii_case(prefix.as_bytes()))
+}
+
+/// Posición de `needle` en `text` sin distinguir mayúsculas (`needle` en ASCII).
+fn find_ci(text: &str, needle: &str) -> Option<usize> {
+    let hay = text.as_bytes();
+    let n = needle.as_bytes();
+    (0..hay.len().saturating_sub(n.len() - 1)).find(|&i| hay[i..i + n.len()].eq_ignore_ascii_case(n))
+}
+
 /// HTML a texto (quita etiquetas, scripts y estilos).
+/// Trabaja sobre el texto original (sin pasarlo a minúsculas: eso cambia la longitud de
+/// algunas letras y descuadraría las posiciones).
 fn html_text(html: &str) -> String {
     let mut out = String::new();
-    let lower = html.to_lowercase();
     let mut i = 0;
     let bytes = html.as_bytes();
-    while i < bytes.len() {
+    'outer: while i < bytes.len() {
         if bytes[i] == b'<' {
             for block in ["script", "style"] {
-                if lower[i..].starts_with(&format!("<{block}")) {
-                    if let Some(end) = lower[i..].find(&format!("</{block}>")) {
-                        i += end + block.len() + 3;
-                    }
+                if starts_with_ci(&html[i..], &format!("<{block}")) {
+                    let close = format!("</{block}>");
+                    i = find_ci(&html[i..], &close).map_or(bytes.len(), |end| i + end + close.len());
+                    continue 'outer;
                 }
             }
             let tag_end = html[i..].find('>').map_or(bytes.len(), |e| i + e + 1);
-            let tag = &lower[i..tag_end.min(lower.len())];
-            if ["<br", "<p", "</p", "<div", "</div", "<li", "<tr", "<h1", "<h2", "<h3"].iter().any(|t| tag.starts_with(t)) {
+            let tag = &html[i..tag_end];
+            if ["<br", "<p", "</p", "<div", "</div", "<li", "<tr", "<h1", "<h2", "<h3"].iter().any(|t| starts_with_ci(tag, t)) {
                 out.push('\n');
             }
             i = tag_end;
@@ -667,6 +715,22 @@ mod tests {
     }
 
     #[test]
+    fn html_survives_letters_that_change_length() {
+        let text = html_text("İİİİ<SCRIPT>codigoOculto()</script>texto suelto<br>fin <p>İstanbul</p>");
+        assert!(text.contains("texto suelto"));
+        assert!(text.contains("İstanbul"));
+        assert!(!text.contains("codigoOculto"));
+    }
+
+    #[test]
+    fn xlsx_columns_follow_references() {
+        assert_eq!(column_index("A1"), Some(0));
+        assert_eq!(column_index("C2"), Some(2));
+        assert_eq!(column_index("AA10"), Some(26));
+        assert_eq!(column_index("12"), None);
+    }
+
+    #[test]
     fn html_to_text() {
         let text = html_text("<html><style>p{}</style><p>Hola &amp; adiós</p><script>x()</script><br>fin</html>");
         assert!(text.contains("Hola & adiós"));
@@ -685,12 +749,15 @@ mod tests {
             zip.start_file("xl/workbook.xml", o).unwrap();
             zip.write_all(br#"<workbook><sheets><sheet name="Ventas" sheetId="1"/></sheets></workbook>"#).unwrap();
             zip.start_file("xl/worksheets/sheet1.xml", o).unwrap();
-            zip.write_all(br#"<worksheet><sheetData><row><c t="s"><v>0</v></c><c><v>12</v></c></row><row><c t="s"><v>1</v></c><c t="inlineStr"><is><t>x</t></is></c></row></sheetData></worksheet>"#).unwrap();
+            zip.write_all(br#"<worksheet><sheetData><row r="1"><c r="A1" t="s"><v>0</v></c><c r="B1"><v>12</v></c></row><row r="2"><c r="A2" t="s"><v>1</v></c><c r="B2" t="inlineStr"><is><t>x</t></is></c></row><row r="4"><c r="C4"><v>99</v></c></row></sheetData></worksheet>"#).unwrap();
             zip.finish().unwrap();
         }
         let rows = xlsx_rows(out.get_ref()).unwrap();
         assert_eq!(rows[0].0, "Ventas");
-        assert_eq!(rows[0].1, vec![vec!["Nombre".to_string(), "12".into()], vec!["Ana & Luis".into(), "x".into()]]);
+        assert_eq!(rows[0].1[..2], [vec!["Nombre".to_string(), "12".into()], vec!["Ana & Luis".into(), "x".into()]]);
+        // Fila 3 vacía y el 99 en la columna C.
+        assert!(rows[0].1[2].is_empty());
+        assert_eq!(rows[0].1[3], vec![String::new(), String::new(), "99".into()]);
 
         let mut ppt = Cursor::new(Vec::new());
         {

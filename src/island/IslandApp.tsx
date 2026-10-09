@@ -108,13 +108,15 @@ function Island({ settings }: { settings: Settings }) {
     if (isTauri()) void api.settingsUpdate(next).catch(console.error);
   }, []);
 
-  const soundsOn = settings.sounds;
-  const sound = useCallback(
-    (kind: SoundKind) => {
-      if (soundsOn) playSound(kind);
-    },
-    [soundsOn],
-  );
+  // En una ref: si `sound` cambiara al activar los sonidos, los efectos de abajo volverían
+  // a sonar "hecho" y "error" de golpe.
+  const soundsOn = useRef(settings.sounds);
+  useEffect(() => {
+    soundsOn.current = settings.sounds;
+  }, [settings.sounds]);
+  const sound = useCallback((kind: SoundKind) => {
+    if (soundsOn.current) playSound(kind);
+  }, []);
   useEffect(() => {
     if (chat.doneAt) sound("done");
   }, [chat.doneAt, sound]);
@@ -358,6 +360,12 @@ function Island({ settings }: { settings: Settings }) {
     sendMessage(message, pendingCapture, files);
   };
 
+  /** Borra la conversación y también la captura pendiente (Rust ya la ha descartado). */
+  const clearChat = useCallback(() => {
+    setPendingCapture(null);
+    chat.clear();
+  }, [chat]);
+
   const discardCapture = useCallback(() => {
     setPendingCapture(null);
     if (isTauri()) void api.captureDiscard().catch(console.error);
@@ -574,7 +582,7 @@ function Island({ settings }: { settings: Settings }) {
           }}
           onFile={() => void pickFiles()}
           onNewChat={() => {
-            chat.clear();
+            clearChat();
             setTab("chat");
           }}
         />
@@ -627,7 +635,7 @@ function Island({ settings }: { settings: Settings }) {
           status={ticoChip}
           sounds={settings.sounds}
           onToggleSound={() => save({ ...settings, sounds: !settings.sounds })}
-          onClear={tab === "chat" && chat.messages.length > 0 ? chat.clear : undefined}
+          onClear={tab === "chat" && chat.messages.length > 0 ? clearChat : undefined}
           onSettings={isTauri() ? () => void api.openSettings().catch(console.error) : undefined}
           onCollapse={() => dispatch({ type: "collapse" })}
           onClose={() => dispatch({ type: "escape" })}

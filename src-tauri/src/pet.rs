@@ -112,11 +112,17 @@ pub fn pet_open_island(app: AppHandle) {
     island::open_from_shortcut(&app, "open");
 }
 
-/// Esconder a Tico del escritorio (desde su menú).
+/// Esconder a Tico del escritorio (desde su menú). La ventana se cierra un poco después,
+/// fuera de esta llamada: cerrarla mientras atiende su propia petición puede fallar.
 #[tauri::command]
-pub fn pet_hide(app: AppHandle) -> AppResult<()> {
-    let mut settings = lock(&app.state::<AppState>().settings).clone();
-    settings.desktop_tico = false;
-    crate::commands::apply_settings(&app, settings)?;
+pub async fn pet_hide(app: AppHandle) -> AppResult<()> {
+    std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(60));
+        let mut settings = lock(&app.state::<AppState>().settings).clone();
+        settings.desktop_tico = false;
+        if let Err(err) = crate::commands::apply_settings(&app, settings) {
+            eprintln!("No se pudo esconder a Tico: {err}");
+        }
+    });
     Ok(())
 }

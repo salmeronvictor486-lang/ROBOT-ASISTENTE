@@ -22,8 +22,10 @@ fn apply_autostart(app: &AppHandle, enabled: bool) -> AppResult<()> {
 }
 
 /// Guarda los ajustes, aplica lo que cambie y avisa a todas las ventanas.
+/// Es `async` a propósito: puede crear una ventana (Tico en el escritorio), y en Windows
+/// crear ventanas desde un comando síncrono bloquea la app.
 #[tauri::command]
-pub fn settings_update(app: AppHandle, settings: Settings) -> AppResult<Settings> {
+pub async fn settings_update(app: AppHandle, settings: Settings) -> AppResult<Settings> {
     apply_settings(&app, settings)
 }
 
@@ -102,8 +104,9 @@ pub fn open_window(app: &AppHandle, kind: &str) -> AppResult<()> {
     Ok(())
 }
 
+/// `async` por lo mismo que `settings_update`: crea una ventana.
 #[tauri::command]
-pub fn open_settings(app: AppHandle, page: Option<String>) -> AppResult<()> {
+pub async fn open_settings(app: AppHandle, page: Option<String>) -> AppResult<()> {
     open_window(&app, page.as_deref().unwrap_or("settings"))
 }
 
