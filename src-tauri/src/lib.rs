@@ -2,8 +2,11 @@ mod ai;
 mod capture;
 mod chat;
 mod commands;
+mod convert;
 mod error;
+mod files;
 mod island;
+mod ocr;
 mod platform;
 mod secrets;
 mod settings;
@@ -26,6 +29,7 @@ pub fn run() {
             island::open_from_shortcut(app, "open");
         }))
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
@@ -46,6 +50,7 @@ pub fn run() {
             commands::settings_update,
             commands::open_settings,
             commands::set_ui_language,
+            commands::open_url,
             island::island_set_rect,
             island::island_focus,
             island::island_info,
@@ -59,6 +64,12 @@ pub fn run() {
             capture::capture_screen,
             capture::capture_discard,
             capture::open_screen_permission_settings,
+            files::files_inspect,
+            files::files_pick,
+            files::file_open,
+            files::file_reveal,
+            files::file_thumbnail,
+            convert::convert_to_pdf,
         ])
         .run(tauri::generate_context!());
 

@@ -55,21 +55,33 @@ pub fn settings_update(app: AppHandle, settings: Settings) -> AppResult<Settings
 }
 
 /// Abre (o trae al frente) la ventana de ajustes o la página de pruebas de Tico.
+/// `kind` puede ser "playground", "settings" o una sección de ajustes ("ticos").
 pub fn open_window(app: &AppHandle, kind: &str) -> AppResult<()> {
+    // Sección a la que saltar al abrir los ajustes (solo letras: va dentro de un script).
+    let section = match kind {
+        "playground" | "settings" => None,
+        other if other.chars().all(|c| c.is_ascii_alphabetic()) => Some(other),
+        _ => None,
+    };
     let (label, page, title, size) = match kind {
         "playground" => ("playground", "playground.html", "Tico · pruebas", (760.0, 820.0)),
-        _ => ("settings", "settings.html", "Tico", (760.0, 640.0)),
+        _ => ("settings", "settings.html", "Tico", (920.0, 680.0)),
     };
     if let Some(window) = app.get_webview_window(label) {
         window.unminimize()?;
         window.show()?;
         window.set_focus()?;
+        if let Some(section) = section {
+            app.emit_to(label, "settings://section", section)?;
+        }
         return Ok(());
     }
+    let script = section.map_or(String::new(), |s| format!("window.__TICO_SECTION__ = \"{s}\";"));
     let window = WebviewWindowBuilder::new(app, label, WebviewUrl::App(page.into()))
+        .initialization_script(&script)
         .title(title)
         .inner_size(size.0, size.1)
-        .min_inner_size(420.0, 420.0)
+        .min_inner_size(560.0, 460.0)
         .center()
         .build()?;
     window.set_focus()?;
@@ -85,5 +97,21 @@ pub fn open_settings(app: AppHandle, page: Option<String>) -> AppResult<()> {
 #[tauri::command]
 pub fn set_ui_language(app: AppHandle, lang: String) -> AppResult<()> {
     tray::set_language(&app, &lang)?;
+    Ok(())
+}
+
+/// Abre una web en el navegador (para "Conseguir una clave"). Solo direcciones https.
+#[tauri::command]
+pub fn open_url(url: String) -> AppResult<()> {
+    let ok = url.starts_with("https://") && !url.chars().any(|c| c.is_whitespace() || c == '"');
+    if !ok {
+        return Err(AppError::File("dirección no válida".into()));
+    }
+    #[cfg(target_os = "windows")]
+    std::process::Command::new("explorer").arg(&url).spawn()?;
+    #[cfg(target_os = "macos")]
+    std::process::Command::new("open").arg(&url).spawn()?;
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    std::process::Command::new("xdg-open").arg(&url).spawn()?;
     Ok(())
 }

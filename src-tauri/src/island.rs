@@ -16,8 +16,8 @@ use crate::state::AppState;
 pub const ISLAND_LABEL: &str = "island";
 
 /// Panel expandido a escala M (px lógicos). Debe coincidir con `src/island/sizes.ts`.
-const EXPANDED_W: f64 = 480.0;
-const EXPANDED_H: f64 = 320.0;
+const EXPANDED_W: f64 = 600.0;
+const EXPANDED_H: f64 = 340.0;
 /// Margen lateral de la ventana para que quepa la sombra de la cápsula.
 pub const SIDE_MARGIN: f64 = 40.0;
 /// Hueco inferior para la sombra.
