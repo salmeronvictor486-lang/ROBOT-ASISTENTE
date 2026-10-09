@@ -1,6 +1,7 @@
-import { useEffect, useRef, type ReactNode, type RefObject } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import { useT } from "../i18n";
-import { IconClose, IconCollapse, IconEye, IconGear, IconTrash } from "./icons";
+import { IconClose, IconCollapse, IconCopy, IconEye, IconGear, IconTrash } from "./icons";
+import { Markdown } from "./Markdown";
 import { errorKey, type ChatApi } from "./useChat";
 
 interface Props {
@@ -83,7 +84,8 @@ export function ChatPanel({
         {chat.messages.map((m) => (
           <div key={m.id} className={`message message-${m.role}`}>
             {m.thumbnail && <img className="message-thumb" src={m.thumbnail} alt="" />}
-            {m.text && <p>{m.text}</p>}
+            {m.text && (m.role === "assistant" ? <Markdown text={m.text} /> : <p>{m.text}</p>)}
+            {m.role === "assistant" && m.text && !busy && <CopyButton text={m.text} />}
             {m.role === "assistant" && !m.text && !m.error && busy && (
               <p className="typing" aria-label={t("island.thinking")}>
                 <span />
@@ -140,5 +142,31 @@ export function ChatPanel({
         </div>
       </form>
     </>
+  );
+}
+
+/** Copia la respuesta al portapapeles y avisa un momento con "Copiado". */
+function CopyButton({ text }: { text: string }) {
+  const t = useT();
+  const [copied, setCopied] = useState(false);
+  useEffect(() => {
+    if (!copied) return;
+    const id = window.setTimeout(() => setCopied(false), 1400);
+    return () => window.clearTimeout(id);
+  }, [copied]);
+  return (
+    <button
+      type="button"
+      className="copy-button"
+      onClick={(e) => {
+        e.stopPropagation();
+        navigator.clipboard
+          .writeText(text)
+          .then(() => setCopied(true))
+          .catch(console.error);
+      }}
+    >
+      <IconCopy /> {copied ? t("island.copied") : t("island.copy")}
+    </button>
   );
 }

@@ -43,3 +43,10 @@ export const IconEye = () => (
     <circle cx="8" cy="8" r="1.8" />
   </svg>
 );
+
+export const IconCopy = () => (
+  <svg {...common} width={13} height={13}>
+    <rect x="5" y="5" width="8.5" height="8.5" rx="2" />
+    <path d="M10.5 3.5V3a1.5 1.5 0 0 0-1.5-1.5H3.5A1.5 1.5 0 0 0 2 3v5.5A1.5 1.5 0 0 0 3.5 10H4" />
+  </svg>
+);

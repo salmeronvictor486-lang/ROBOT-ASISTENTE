@@ -53,7 +53,8 @@ src/
     sizes.ts         Tamaños S/M/L y rectángulo para el click-through
     IslandApp.tsx    Une sensores de Rust, chat, captura, expresiones y sonidos
     useChat.ts       Estado del chat y streaming por Channel de Tauri
-  robot/             Tico: Tico.tsx (SVG + bucle rAF), expressions.ts, gaze.ts, Playground
+  robot/             Tico: Tico.tsx (SVG + bucle rAF), expressions.ts (poses), rig.ts (brazos),
+                     gaze.ts, Playground
   settings/          Ventana de ajustes (se guarda sola) y grabación de atajos
   lib/               spring.ts (muelle propio), tauri.ts (API tipada), sound.ts (Web Audio)
   i18n/              es.json (referencia), ca.json, en.json
@@ -67,7 +68,7 @@ src-tauri/src/
   settings.rs        Ajustes en JSON en la carpeta de config del sistema
   shortcuts.rs       Atajos globales (abrir y capturar)
   tray.rs            Menú de la bandeja/barra de menús traducido
-  platform/macos.rs  NSPanel no activable por encima de la barra de menús y notch
+  platform/macos.rs  NSPanel no activable por encima de la barra de menús y pantallas con notch
 .github/workflows/   ci.yml (comprobaciones) y release.yml (instaladores)
 ```
 
@@ -131,6 +132,20 @@ src-tauri/src/
 22. **Firma de Apple opcional**: `release.yml` firma con Developer ID y notariza solo si
     existen los secrets `APPLE_*` (cuenta de 99 $/año). Sin ellos, firma ad hoc y
     Gatekeeper avisa ("Apple no ha podido verificar…"); el README explica cómo abrirla.
+23. **Notch de MacBook (v0.2.0)**: Rust detecta cada pantalla con notch (ancho y alto, vía
+    `NSScreen.safeAreaInsets` y `auxiliaryTopLeft/RightArea`) y la reconoce entre los
+    monitores por su tamaño lógico. En esa pantalla la isla va siempre centrada, nace del
+    notch (oculta mide como él), en peek le salen orejas a los lados y en compact/expanded
+    el contenido empieza por debajo (`contentTop`). Pasar el ratón por el notch la abre.
+    En el navegador, `?notch=1` simula el notch para probar el diseño.
+24. **Tico 2.0**: cuerpo, cuello, luz en el pecho y brazos con hombro y codo
+    (`src/robot/rig.ts`, cinemática directa con tests). Animación por capas: pose con
+    muelles, respiración y parpadeos dobles, sacadas de los ojos, antena con inercia,
+    cabeza con retraso (follow-through), squash & stretch, gestos al hablar, saludo al
+    abrir la isla y gestos espontáneos en reposo. Los brazos van delante de la cabeza para
+    que se vean al saludar o pensar.
+25. **Respuestas con formato**: `src/island/markdown.ts` convierte el Markdown básico en
+    elementos de React (sin `dangerouslySetInnerHTML`), con botón de copiar.
 
 ## Licencias
 Código: MIT (`LICENSE`). Tico, su nombre, su diseño y sus sonidos: todos los derechos

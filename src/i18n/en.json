@@ -97,5 +97,7 @@
   "settings.sounds": "Sounds",
   "settings.autostart": "Start Tico with the system",
   "settings.privacy": "No telemetry and no accounts. Screenshots and the conversation only live in memory while Tico is open.",
-  "settings.error": "Couldn't save: {message}"
+  "settings.error": "Couldn't save: {message}",
+  "island.copy": "Copy",
+  "island.copied": "Copied"
 }

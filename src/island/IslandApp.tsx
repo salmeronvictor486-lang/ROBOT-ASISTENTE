@@ -7,7 +7,8 @@ import { setGaze } from "../robot/gaze";
 import { Tico } from "../robot/Tico";
 import { useTripleClick } from "../robot/useTripleClick";
 import { useSettings } from "../settings/useSettings";
-import type { CapturePreview, IslandInfo, Settings } from "../types";
+import type { CapturePreview, IslandInfo, NotchInfo, Settings } from "../types";
+import { ActivityIndicator } from "./ActivityIndicator";
 import { CaptureAttachment } from "./CaptureAttachment";
 import { Capsule } from "./Capsule";
 import { ChatPanel } from "./ChatPanel";
@@ -59,7 +60,7 @@ function useRecent(at: number, ms: number): boolean {
 function Island({ settings }: { settings: Settings }) {
   const t = useT();
   const [ctx, dispatch] = useReducer(islandReducer, initialIsland);
-  const [info, setInfo] = useState<IslandInfo>({ platform: "", notchWidth: null });
+  const [info, setInfo] = useState<IslandInfo>(() => ({ platform: "", notch: simulatedNotch() }));
   const [windowWidth, setWindowWidth] = useState(() => window.innerWidth);
   const [draft, setDraft] = useState("");
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -85,13 +86,26 @@ function Island({ settings }: { settings: Settings }) {
   useEffect(() => {
     if (chat.errorAt) sound("error");
   }, [chat.errorAt, sound]);
+  // Al abrirse la isla, Tico suena y saluda con la mano.
+  const [wave, setWave] = useState(0);
   const wasHidden = useRef(true);
   useEffect(() => {
     const hidden = ctx.state === "hidden";
-    if (wasHidden.current && !hidden) sound("open");
+    if (wasHidden.current && !hidden) {
+      sound("open");
+      const id = window.setTimeout(() => setWave((w) => w + 1), 120);
+      wasHidden.current = hidden;
+      return () => window.clearTimeout(id);
+    }
     wasHidden.current = hidden;
   }, [ctx.state, sound]);
   const showHappy = useRecent(chat.doneAt, HAPPY_MS);
+
+  // El notch cambia si la isla pasa del MacBook a un monitor externo.
+  useEffect(
+    () => onEvent<NotchInfo | null>("island://notch", (notch) => setInfo((i) => ({ ...i, notch }))),
+    [],
+  );
 
   useEffect(() => {
     if (isTauri()) api.islandInfo().then(setInfo).catch(console.error);
@@ -240,17 +254,20 @@ function Island({ settings }: { settings: Settings }) {
   else if (sleeping) expression = "sleeping";
   else if (ctx.pointerInside && ctx.state !== "expanded") expression = "curious";
 
-  const topGap = info.notchWidth ? 0 : TOP_GAP;
-  const geometry = capsuleGeometry(ctx.state, settings.islandSize, info.notchWidth);
-  const x = capsuleX(settings.islandPosition, windowWidth, geometry.width);
+  const notch = info.notch;
+  const topGap = notch ? 0 : TOP_GAP;
+  const geometry = capsuleGeometry(ctx.state, settings.islandSize, notch);
+  // Con notch la isla siempre va centrada (el notch está en el centro).
+  const position = notch ? "center" : settings.islandPosition;
+  const x = capsuleX(position, windowWidth, geometry.width);
 
   // Le decimos a Rust dónde está la cápsula para el click-through.
   const hit = capsuleHitRect(
     ctx.state,
     settings.islandSize,
-    settings.islandPosition,
+    position,
     windowWidth,
-    info.notchWidth,
+    notch,
     topGap,
   );
   const hitKey = hit ? `${hit.x}|${hit.width}|${hit.height}` : "none";
@@ -269,6 +286,7 @@ function Island({ settings }: { settings: Settings }) {
         expression={expression}
         bounce={chat.tokens}
         shake={shake}
+        wave={wave}
       />
     </span>
   );
@@ -283,26 +301,42 @@ function Island({ settings }: { settings: Settings }) {
   else if (chat.phase === "talking" && lastReply) status = lastReply.text.slice(-80);
   else if (chat.messages.length > 0) status = t("island.conversationOpen");
 
-  const box = { width: geometry.width, height: geometry.height };
+  const busy = capturing || chat.phase !== "idle";
+  // Con notch, todo el contenido va por debajo de él (contentTop) o a sus lados (orejas).
+  const box = {
+    width: geometry.width,
+    height: geometry.height,
+    paddingTop: geometry.contentTop ? geometry.contentTop + 4 : undefined,
+  };
   let content = null;
-  if (ctx.state === "peek") {
+  if (ctx.state === "peek" && notch) {
+    content = (
+      <div className="content content-peek-notch" style={box} key="peek">
+        <span className="ear">{tico(Math.min(notch.height - 2, 34))}</span>
+        <span className="ear">
+          <ActivityIndicator busy={busy} error={showError} />
+        </span>
+      </div>
+    );
+  } else if (ctx.state === "peek") {
     content = (
       <div className="content content-peek" style={box} key="peek">
-        {tico(28)}
+        {tico(32)}
       </div>
     );
   } else if (ctx.state === "compact") {
     content = (
       <div className="content content-compact" style={box} key="compact">
-        {tico(36)}
+        {tico(notch ? 40 : 44)}
         <span className="status-line">{status}</span>
+        <ActivityIndicator busy={busy} error={showError} />
       </div>
     );
   } else if (ctx.state === "expanded") {
     content = (
       <div className="content content-expanded" style={box} key="expanded">
         <ChatPanel
-          tico={tico(40)}
+          tico={tico(52)}
           title={protestText ?? "Tico"}
           chat={chat}
           draft={draft}
@@ -341,7 +375,7 @@ function Island({ settings }: { settings: Settings }) {
         geometry={geometry}
         x={x}
         top={topGap}
-        visible={ctx.state !== "hidden"}
+        visible={ctx.state !== "hidden" || notch !== null}
         capturing={capturing}
         onClick={() => {
           setSleeping(false);
@@ -352,4 +386,10 @@ function Island({ settings }: { settings: Settings }) {
       </Capsule>
     </div>
   );
+}
+
+/** En el navegador, `?notch=1` simula el notch de un MacBook para probar el diseño. */
+function simulatedNotch(): NotchInfo | null {
+  if (isTauri()) return null;
+  return new URLSearchParams(window.location.search).has("notch") ? { width: 185, height: 32 } : null;
 }

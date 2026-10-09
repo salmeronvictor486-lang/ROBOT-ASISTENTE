@@ -97,5 +97,7 @@
   "settings.sounds": "Sons",
   "settings.autostart": "Inicia el Tico amb el sistema",
   "settings.privacy": "Sense telemetria ni comptes. Les captures i la conversa només viuen a la memòria mentre el Tico està obert.",
-  "settings.error": "No s'ha pogut desar: {message}"
+  "settings.error": "No s'ha pogut desar: {message}",
+  "island.copy": "Copia",
+  "island.copied": "Copiat"
 }

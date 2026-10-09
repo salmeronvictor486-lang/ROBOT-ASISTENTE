@@ -97,5 +97,7 @@
   "settings.sounds": "Sonidos",
   "settings.autostart": "Iniciar Tico con el sistema",
   "settings.privacy": "Sin telemetría ni cuentas. Las capturas y la conversación solo viven en la memoria mientras Tico está abierto.",
-  "settings.error": "No se ha podido guardar: {message}"
+  "settings.error": "No se ha podido guardar: {message}",
+  "island.copy": "Copiar",
+  "island.copied": "Copiado"
 }

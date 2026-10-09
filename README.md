@@ -11,9 +11,15 @@ chatea contigo y, solo cuando tú se lo pides, mira tu pantalla para ayudarte.
 - **La isla**: aparece al dejar el ratón en el borde superior (zona central), crece al
   pasar por encima y se abre al hacer clic. Fuera de la cápsula, los clics pasan a las
   apps de debajo. `Ctrl/⌘ + Mayús + Espacio` la abre para escribir y `Esc` la cierra.
-- **Tico**: robot propio animado a 60 fps. Respira, parpadea, te sigue con la mirada y
-  tiene 8 expresiones: reposo, curioso, mirando, pensando, hablando, contento, error y
-  dormido. Si le haces 3 clics seguidos, protesta.
+- **En MacBook con notch**: la isla nace del propio notch. Le salen "orejas" a los lados y
+  todo el contenido aparece por debajo, así que nunca queda tapado.
+- **Tico**: robot propio con cuerpo y brazos, animado a 60 fps. Respira, parpadea (a veces
+  dos veces), te sigue con la mirada, saluda al abrir la isla, gesticula al hablar, se
+  rasca la cabeza, se lleva la mano a la barbilla al pensar, celebra con los brazos
+  arriba y, si se aburre, mira alrededor o se estira. Tiene 8 expresiones: reposo,
+  curioso, mirando, pensando, hablando, contento, error y dormido. Si le haces 3 clics
+  seguidos, protesta.
+- **Respuestas con formato**: listas, negritas y código, con botón para copiarlas.
 - **Chat con IA**: Claude, OpenAI, Gemini u Ollama (local y gratis). Pones tu propia
   clave, que se guarda en el llavero del sistema. Las respuestas llegan en streaming.
 - **Mira mi pantalla**: botón o `Ctrl/⌘ + Mayús + S`. Captura la pantalla o la ventana
