@@ -3,7 +3,7 @@ import { I18nContext, resolveLang, useT, type MessageKey } from "../i18n";
 import { outfitFor } from "../island/TicoAvatar";
 import { api, isTauri, onEvent, toAppError } from "../lib/tauri";
 import { Tico } from "../robot/Tico";
-import { DEFAULT_SETTINGS, findTico, type AppErrorPayload, type Settings } from "../types";
+import { DEFAULT_SETTINGS, findTico, type AppErrorPayload, type Settings, type UpdateInfo } from "../types";
 import { CommitInput, Row, Section, Segmented, ShortcutInput, Slider, Toggle } from "./fields";
 import { DataSection } from "./DataSection";
 import { ProviderSection } from "./ProviderSection";
@@ -72,6 +72,38 @@ export function SettingsApp() {
     <I18nContext.Provider value={resolveLang(settings.language)}>
       <SettingsPage settings={settings} update={update} save={save} />
     </I18nContext.Provider>
+  );
+}
+
+/** "Buscar ahora": dice si hay versión nueva y deja descargarla. */
+function UpdateRow() {
+  const t = useT();
+  const [state, setState] = useState<
+    { kind: "idle" } | { kind: "checking" } | { kind: "latest" } | { kind: "new"; info: UpdateInfo } | { kind: "error" }
+  >({ kind: "idle" });
+  const check = () => {
+    setState({ kind: "checking" });
+    api
+      .updateCheck(true)
+      .then((info) => setState(info ? { kind: "new", info } : { kind: "latest" }))
+      .catch(() => setState({ kind: "error" }));
+  };
+  return (
+    <Row label={t("settings.version", { version: __APP_VERSION__ })}>
+      <div className="inline">
+        {state.kind === "latest" && <span className="ok-text">{t("settings.upToDate")}</span>}
+        {state.kind === "error" && <span className="error-text">{t("settings.updateError")}</span>}
+        {state.kind === "new" ? (
+          <button type="button" className="button primary" onClick={() => void api.openUrl(state.info.url).catch(console.error)}>
+            {t("settings.downloadVersion", { version: state.info.version })}
+          </button>
+        ) : (
+          <button type="button" className="button" disabled={!isTauri() || state.kind === "checking"} onClick={check}>
+            {state.kind === "checking" ? t("settings.checking") : t("settings.checkNow")}
+          </button>
+        )}
+      </div>
+    </Row>
   );
 }
 
@@ -293,6 +325,15 @@ function SettingsPage({
           <Row label={t("settings.autostart")}>
             <Toggle label={t("settings.autostart")} checked={settings.autostart} onChange={(autostart) => update({ autostart })} />
           </Row>
+          <Row label={t("settings.checkUpdates")} hint={t("settings.checkUpdatesHint")}>
+            <Toggle label={t("settings.checkUpdates")} checked={settings.checkUpdates} onChange={(checkUpdates) => update({ checkUpdates })} />
+          </Row>
+          <UpdateRow />
+          <div className="inline">
+            <button type="button" className="button" onClick={() => void api.openSettings("welcome").catch(console.error)}>
+              {t("settings.showWelcome")}
+            </button>
+          </div>
         </Section>
 
         <footer className="settings-footer">

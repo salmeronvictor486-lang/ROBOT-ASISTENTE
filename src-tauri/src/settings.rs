@@ -497,6 +497,10 @@ pub struct Settings {
     pub auto_workspace: bool,
     /// Guardar las conversaciones en la base de datos (si no, se olvidan al cerrar Tico).
     pub save_history: bool,
+    /// Ya ha visto la bienvenida (se enseña una sola vez).
+    pub onboarded: bool,
+    /// Mirar en GitHub si hay una versión nueva (solo pregunta el número de versión).
+    pub check_updates: bool,
     /// Colores de la versión 0.x (un solo Tico). Solo se leen para migrarlos.
     #[serde(rename = "robotBaseColor", skip_serializing)]
     pub legacy_base_color: Option<String>,
@@ -541,6 +545,8 @@ impl Default for Settings {
             active_workspace: "general".into(),
             auto_workspace: true,
             save_history: true,
+            onboarded: false,
+            check_updates: true,
             legacy_base_color: None,
             legacy_accent_color: None,
         }

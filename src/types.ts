@@ -185,6 +185,16 @@ export interface Settings {
   autoWorkspace: boolean;
   /** Guardar las conversaciones en la base de datos local. */
   saveHistory: boolean;
+  /** Ya ha visto la bienvenida. */
+  onboarded: boolean;
+  /** Mirar en GitHub si hay versión nueva. */
+  checkUpdates: boolean;
+}
+
+/** Versión nueva publicada (`UpdateInfo` en Rust). */
+export interface UpdateInfo {
+  version: string;
+  url: string;
 }
 
 /** Un mensaje guardado en la base de datos (`StoredMessage` en Rust). */
@@ -363,6 +373,8 @@ export const DEFAULT_SETTINGS: Settings = {
   activeWorkspace: "general",
   autoWorkspace: true,
   saveHistory: true,
+  onboarded: true,
+  checkUpdates: true,
 };
 
 /** El Tico con ese id (o el primero). */

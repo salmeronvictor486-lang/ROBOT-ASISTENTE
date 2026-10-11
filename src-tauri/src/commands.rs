@@ -87,8 +87,10 @@ pub fn open_window(app: &AppHandle, kind: &str) -> AppResult<()> {
     };
     let (label, page, title, size) = match kind {
         "playground" => ("playground", "playground.html", "Tico · pruebas", (760.0, 820.0)),
+        "welcome" => ("welcome", "welcome.html", "Tico", (780.0, 560.0)),
         _ => ("settings", "settings.html", "Tico", (920.0, 680.0)),
     };
+    let section = if kind == "welcome" { None } else { section };
     if let Some(window) = app.get_webview_window(label) {
         window.unminimize()?;
         window.show()?;
@@ -104,16 +106,50 @@ pub fn open_window(app: &AppHandle, kind: &str) -> AppResult<()> {
         .title(title)
         .inner_size(size.0, size.1)
         .min_inner_size(560.0, 460.0)
+        .resizable(kind != "welcome")
         .center()
         .build()?;
     window.set_focus()?;
     Ok(())
 }
 
+/// Enseña la bienvenida (la primera vez que se abre Tico, o desde Ajustes). Se marca como
+/// vista al abrirla: si la cierras, no vuelve a salir sola.
+pub fn show_welcome(app: &AppHandle) -> AppResult<()> {
+    let state = app.state::<AppState>();
+    let updated = {
+        let mut settings = lock(&state.settings);
+        if settings.onboarded {
+            None
+        } else {
+            settings.onboarded = true;
+            Some(settings.clone())
+        }
+    };
+    if let Some(settings) = updated {
+        state.save_settings(&settings)?;
+        app.emit("settings://changed", &settings)?;
+    }
+    open_window(app, "welcome")
+}
+
+/// Fin de la bienvenida: cierra su ventana y abre la isla.
+#[tauri::command]
+pub async fn welcome_finish(app: AppHandle) -> AppResult<()> {
+    if let Some(window) = app.get_webview_window("welcome") {
+        window.close()?;
+    }
+    island::open_from_shortcut(&app, "open");
+    Ok(())
+}
+
 /// `async` por lo mismo que `settings_update`: crea una ventana.
 #[tauri::command]
 pub async fn open_settings(app: AppHandle, page: Option<String>) -> AppResult<()> {
-    open_window(&app, page.as_deref().unwrap_or("settings"))
+    match page.as_deref() {
+        Some("welcome") => open_window(&app, "welcome"),
+        page => open_window(&app, page.unwrap_or("settings")),
+    }
 }
 
 /// El frontend sabe resolver "auto" con el idioma del sistema; nos lo dice para el menú.

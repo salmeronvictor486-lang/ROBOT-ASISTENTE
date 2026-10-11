@@ -15,6 +15,7 @@ mod settings;
 mod shortcuts;
 mod state;
 mod tray;
+mod updates;
 mod workspace;
 
 use tauri::Manager;
@@ -55,6 +56,8 @@ pub fn run() {
             commands::set_ui_language,
             commands::open_url,
             commands::db_info,
+            commands::welcome_finish,
+            updates::update_check,
             commands::db_backup,
             island::island_set_rect,
             island::island_focus,
@@ -63,6 +66,7 @@ pub fn run() {
             chat::chat_cancel,
             chat::chat_clear,
             chat::chat_history,
+            chat::chat_forget_last,
             chat::history_clear_all,
             chat::ai_test_connection,
             chat::secret_set,
@@ -104,7 +108,9 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         Some(saved) => saved.sanitized(),
         None => {
             let legacy = app.path().app_config_dir()?.join("settings.json");
-            let settings = Settings::load(&legacy);
+            let mut settings = Settings::load(&legacy);
+            // Quien viene de una versión anterior ya conoce Tico: sin bienvenida.
+            settings.onboarded = legacy.exists();
             if let Err(err) = db.save_settings(&settings) {
                 eprintln!("No se pudieron guardar los ajustes: {err}");
             } else if legacy.exists() {
@@ -139,6 +145,11 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     if settings.desktop_tico {
         if let Err(err) = pet::sync(&handle, true) {
             eprintln!("No se pudo poner a Tico en el escritorio: {err}");
+        }
+    }
+    if !settings.onboarded {
+        if let Err(err) = commands::show_welcome(&handle) {
+            eprintln!("No se pudo abrir la bienvenida: {err}");
         }
     }
     island::spawn_tracker(handle);

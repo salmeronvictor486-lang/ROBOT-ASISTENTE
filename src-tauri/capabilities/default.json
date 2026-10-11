@@ -6,7 +6,8 @@
     "island",
     "settings",
     "playground",
-    "pet"
+    "pet",
+    "welcome"
   ],
   "permissions": [
     "core:default",

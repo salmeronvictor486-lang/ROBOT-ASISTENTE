@@ -13,6 +13,7 @@ import type {
   SendOptions,
   Settings,
   StoredMessage,
+  UpdateInfo,
 } from "../types";
 
 /** `true` dentro de la app; `false` si abres Vite en un navegador normal. */
@@ -32,6 +33,9 @@ export const api = {
   chatCancel: () => invoke<undefined>("chat_cancel"),
   chatClear: (tico?: string, workspace?: string) => invoke<undefined>("chat_clear", { tico, workspace }),
   chatHistory: (workspace: string, tico: string) => invoke<StoredMessage[]>("chat_history", { workspace, tico }),
+  chatForgetLast: (workspace: string, tico: string) => invoke<undefined>("chat_forget_last", { workspace, tico }),
+  welcomeFinish: () => invoke<undefined>("welcome_finish"),
+  updateCheck: (force = false) => invoke<UpdateInfo | null>("update_check", { force }),
   historyClearAll: () => invoke<undefined>("history_clear_all"),
   conversionsRecent: () => invoke<ConvertResult[]>("conversions_recent"),
   conversionsClear: () => invoke<undefined>("conversions_clear"),
@@ -43,7 +47,7 @@ export const api = {
   captureScreen: () => invoke<CapturePreview>("capture_screen"),
   captureDiscard: () => invoke<undefined>("capture_discard"),
   openScreenPermissionSettings: () => invoke<undefined>("open_screen_permission_settings"),
-  openSettings: (page?: "settings" | "playground" | "ticos" | "workspaces") => invoke<undefined>("open_settings", { page }),
+  openSettings: (page?: "settings" | "playground" | "ticos" | "workspaces" | "ai" | "welcome") => invoke<undefined>("open_settings", { page }),
   setUiLanguage: (lang: string) => invoke<undefined>("set_ui_language", { lang }),
   openUrl: (url: string) => invoke<undefined>("open_url", { url }),
   secretStatus: () => invoke<Partial<Record<ProviderKind, boolean>>>("secret_status"),
