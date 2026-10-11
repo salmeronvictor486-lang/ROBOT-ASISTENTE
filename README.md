@@ -14,7 +14,7 @@ chatea contigo y, solo cuando tú se lo pides, mira tu pantalla para ayudarte.
 
 ## Qué hace
 
-**Versión 1.0** — la primera oficial.
+**Versión 1.0** 
 
 - **La isla**: aparece al dejar el ratón en el borde superior (zona central), crece al
   pasar por encima y se abre al hacer clic. Tiene tres pestañas: **Inicio** (Tico, atajos
