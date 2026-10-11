@@ -14,7 +14,7 @@ chatea contigo y, solo cuando tú se lo pides, mira tu pantalla para ayudarte.
 
 ## Qué hace
 
-**Versión 1.0** — la primera oficial.
+**Versión 1.1** — con espacios de trabajo.
 
 - **La isla**: aparece al dejar el ratón en el borde superior (zona central), crece al
   pasar por encima y se abre al hacer clic. Tiene tres pestañas: **Inicio** (Tico, atajos
@@ -24,6 +24,11 @@ chatea contigo y, solo cuando tú se lo pides, mira tu pantalla para ayudarte.
 - **Varios Ticos, uno para cada tarea**: vienen cinco de serie (Tico, Código, Traductor,
   Escritor y Profe) y puedes crear hasta 12. Cada uno tiene su nombre, sus colores, su ropa,
   su forma de responder y, si quieres, su propia IA. Cada uno guarda su conversación.
+- **Espacios de trabajo**: agrupa tus Ticos por espacio (Clase, Trabajo, Programar…) y cambia
+  de uno a otro desde la isla. Cada espacio tiene sus Ticos, un contexto que todos conocen
+  («estudio 2.º de Bachillerato»), una carpeta cuyos archivos salen en la pestaña Archivos y
+  las apps que lo activan: si abres la isla con Visual Studio Code delante, Tico pasa solo
+  al espacio de programar. Cada Tico guarda una conversación distinta en cada espacio.
 - **Pasa Word a PDF él solo**: dile «pásame este Word a PDF» (o suelta el archivo en la isla)
   y lo convierte sin gastar IA. Usa Word, Excel o PowerPoint en Windows; Pages, Numbers o
   Keynote en Mac; o LibreOffice. Si no tienes ninguno, lo hace con su propio motor

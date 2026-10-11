@@ -16,8 +16,8 @@ usuario lo pide, mira la pantalla para ayudar. El documento de diseño completo 
 - Prohibido copiar código, sonidos o la mascota de coucou (Mochi). Tico es un diseño propio.
 
 ## Fase actual
-**Versión 1.0.0** (la primera oficial). Fases 0-6 hechas y, encima, la 1.0: varios Ticos,
-12 servicios de IA, OCR, archivos, Word → PDF e interfaz nueva con pestañas.
+**Versión 1.1.0**. Fases 0-6 hechas, la 1.0 (varios Ticos, 12 servicios de IA, OCR,
+archivos, Word → PDF e interfaz nueva con pestañas) y la 1.1: espacios de trabajo.
 Pendiente: que Victor pruebe en Windows (y en un Mac si puede) y corregir lo que falle.
 
 | Fase | Contenido | Estado |
@@ -37,6 +37,7 @@ Lo que solo se puede verificar en un equipo real (CI solo compila y pasa tests):
 - Que el foco del teclado llegue al cuadro de texto al abrir con el atajo.
 - Soltar archivos sobre la isla (eventos nativos de Tauri) y el OCR de Windows/macOS.
 - Pasar a PDF con Word (PowerShell + COM) en Windows y con Pages (AppleScript) en Mac.
+- Que el cambio de espacio por app (`workspace.rs`, ventana activa con `xcap`) acierte.
 
 ## Stack
 - Tauri 2 (Rust) + Vite 8 + React 19 + TypeScript 6 (estricto).
@@ -63,9 +64,10 @@ src/
     useChat.ts       Conversación por Tico, streaming por Channel, tareas de PDF
   robot/             Tico: Tico.tsx (SVG + bucle rAF), expressions.ts (15 poses), outfits.tsx
                      (ropa), rig.ts (brazos), gaze.ts, Playground
-  settings/          Ventana de ajustes con menú lateral, editor de Ticos y proveedores
+  settings/          Ventana de ajustes con menú lateral, editor de Ticos, espacios y proveedores
   pet/               Tico en el escritorio (ventana transparente aparte)
   lib/               spring.ts (muelle propio), tauri.ts (API tipada), sound.ts (Web Audio)
+  workspaces.ts      Espacios: cambiar de espacio o de Tico, espacio nuevo (con tests)
   i18n/              es.json (referencia), ca.json, en.json
 src-tauri/src/
   lib.rs             Arranque, plugins y registro de comandos
@@ -83,6 +85,7 @@ src-tauri/src/
   shortcuts.rs       Atajos globales (abrir y capturar)
   tray.rs            Menú de la bandeja/barra de menús traducido (con "Tico en el escritorio")
   pet.rs             Ventana de Tico en el escritorio: crearla, quitarla y recordar dónde está
+  workspace.rs       Cambiar solo al espacio de la app que estás usando al abrir la isla
   platform/macos.rs  NSPanel no activable por encima de la barra de menús y pantallas con notch
 .github/workflows/   ci.yml (comprobaciones) y release.yml (instaladores)
 ```
@@ -185,6 +188,15 @@ src-tauri/src/
     encima. Se arrastra con `startDragging()` (a partir de 4 px; si no, es un clic que abre la
     isla). Rust le manda la posición del cursor para los ojos y guarda dónde lo dejas (solo
     Rust toca `petPosition`: una ventana con ajustes viejos no la pisa).
+35. **Espacios de trabajo (1.1)**: `Settings.workspaces` + `activeWorkspace`. Los Ticos siguen
+    siendo una lista global y cada espacio guarda los ids de los suyos (un Tico puede estar en
+    varios) y su último Tico. `activeTico` es siempre del espacio activo (lo asegura
+    `sanitized()`). Las conversaciones van por `"espacio/tico"`. El contexto del espacio y los
+    nombres de los últimos archivos de su carpeta van en el prompt de sistema (solo si hay más
+    de un espacio o algo que contar). Al abrir la isla, `workspace.rs` mira la ventana activa y
+    cambia al espacio cuyas apps coinciden (por palabra, como las apps bloqueadas); solo cuando
+    cambias de app, para no pisar un cambio hecho a mano. Los ajustes de la 1.0 (sin
+    `workspaces`) estrenan los espacios con los Ticos que ya tenían.
 
 ## Anuncio (`promo/`)
 `promo.html` + `src/promo/` dibujan el anuncio de 35 s con los componentes reales (Tico,
