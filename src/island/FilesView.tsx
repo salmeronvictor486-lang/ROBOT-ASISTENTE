@@ -1,8 +1,10 @@
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useT } from "../i18n";
+import { api, isTauri } from "../lib/tauri";
 import type { FileInfo } from "../types";
+import { folderName } from "../workspaces";
 import { FILE_KINDS } from "./fileKinds";
-import { IconClose, IconFile } from "./icons";
+import { IconClose, IconFile, IconFolder, IconOpen } from "./icons";
 import { TaskCard } from "./TaskCard";
 import type { PdfTask } from "./useChat";
 
@@ -16,11 +18,32 @@ interface Props {
   onPdf: (files: FileInfo[]) => void;
   onPrompt: (prompt: string) => void;
   onAsk: () => void;
+  /** Carpeta del espacio de trabajo ("" si no tiene). */
+  folder: string;
+  onAddFiles: (files: FileInfo[]) => void;
+}
+
+/** Archivos de la carpeta del espacio (se vuelven a leer al cambiar de carpeta). */
+function useFolderFiles(folder: string): { files: FileInfo[]; failed: boolean } {
+  const [state, setState] = useState<{ folder: string; files: FileInfo[]; failed: boolean }>({ folder: "", files: [], failed: false });
+  useEffect(() => {
+    if (!folder || !isTauri()) return;
+    let alive = true;
+    api
+      .workspaceFiles(folder)
+      .then((files) => alive && setState({ folder, files, failed: false }))
+      .catch(() => alive && setState({ folder, files: [], failed: true }));
+    return () => {
+      alive = false;
+    };
+  }, [folder]);
+  return state.folder === folder ? state : { files: [], failed: false };
 }
 
 /** Pestaña de archivos: zona para soltar, qué hacer con lo soltado y los PDF de hoy. */
-export function FilesView({ tico, files, recent, dragging, onPick, onRemove, onPdf, onPrompt, onAsk }: Props) {
+export function FilesView({ tico, files, recent, dragging, onPick, onRemove, onPdf, onPrompt, onAsk, folder, onAddFiles }: Props) {
   const t = useT();
+  const inFolder = useFolderFiles(folder);
   const stop = (fn: () => void) => (e: React.MouseEvent) => {
     e.stopPropagation();
     fn();
@@ -86,13 +109,49 @@ export function FilesView({ tico, files, recent, dragging, onPick, onRemove, onP
         </section>
       )}
       <section className="card recent-card">
-        <h3>{t("island.recent")}</h3>
-        {recent.length === 0 && <p className="muted">{t("island.noRecent")}</p>}
-        <div className="recent-list">
-          {recent.map((task, i) => (
-            <TaskCard key={`${task.source}-${i}`} task={task} />
-          ))}
-        </div>
+        {folder && (
+          <>
+            <h3 className="folder-title">
+              <IconFolder />
+              <span title={folder}>{folderName(folder)}</span>
+              <button
+                type="button"
+                className="icon-button"
+                title={t("island.folder.open")}
+                onClick={stop(() => void api.fileOpen(folder).catch(console.error))}
+              >
+                <IconOpen />
+              </button>
+            </h3>
+            <div className="recent-list folder-list">
+              {inFolder.failed && <p className="muted">{t("island.folder.missing")}</p>}
+              {!inFolder.failed && inFolder.files.length === 0 && <p className="muted">{t("island.folder.empty")}</p>}
+              {inFolder.files.map((f) => (
+                <button
+                  key={f.path}
+                  type="button"
+                  className="file-row folder-file"
+                  title={t("island.folder.attach", { name: f.name })}
+                  onClick={stop(() => onAddFiles([f]))}
+                >
+                  <IconFile label={FILE_KINDS[f.kind].label} color={FILE_KINDS[f.kind].color} />
+                  <span className="file-name">{f.name}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+        {(!folder || recent.length > 0) && (
+          <>
+            <h3>{t("island.recent")}</h3>
+            {recent.length === 0 && <p className="muted">{t("island.noRecent")}</p>}
+            <div className="recent-list">
+              {recent.map((task, i) => (
+                <TaskCard key={`${task.source}-${i}`} task={task} />
+              ))}
+            </div>
+          </>
+        )}
       </section>
     </div>
   );

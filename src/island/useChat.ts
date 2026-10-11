@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { api, Channel, isTauri, toAppError } from "../lib/tauri";
 import type { AppErrorPayload, ChatEvent, ConvertResult, FileInfo } from "../types";
+import { chatKey } from "../workspaces";
 
 export interface Notice {
   kind: "noVision" | "modelChanged" | "retrying";
@@ -37,10 +38,10 @@ export interface SendExtras {
 }
 
 export interface ChatApi {
-  /** Mensajes del Tico activo. */
+  /** Mensajes del Tico activo en el espacio activo. */
   messages: UiMessage[];
   phase: ChatPhase;
-  /** Tico que está respondiendo ahora (o `null`). */
+  /** Conversación ("espacio/tico") que está respondiendo ahora (o `null`). */
   busyTico: string | null;
   /** Sube con cada token: hace rebotar los ojos de Tico. */
   tokens: number;
@@ -56,7 +57,7 @@ export interface ChatApi {
   /** Añade el mensaje del usuario y una tarjeta de "convirtiendo…"; devuelve su id. */
   startTask: (userText: string, source: string, files?: FileInfo[]) => number;
   finishTask: (id: number, outcome: { result: ConvertResult } | { error: AppErrorPayload }) => void;
-  /** ¿Tiene conversación este Tico? */
+  /** ¿Tiene conversación este Tico en el espacio activo? */
   hasMessages: (tico: string) => boolean;
 }
 
@@ -79,10 +80,12 @@ function localNow(lang: string): string {
 }
 
 /**
- * Estado del chat en la isla: una conversación por Tico. El historial "de verdad" (lo que
- * se manda a la IA) lo guarda Rust en memoria.
+ * Estado del chat en la isla: una conversación por Tico y espacio de trabajo. El historial
+ * "de verdad" (lo que se manda a la IA) lo guarda Rust en memoria.
  */
-export function useChat(ticoId: string, lang: string): ChatApi {
+export function useChat(ticoId: string, workspaceId: string, lang: string): ChatApi {
+  // Clave de la conversación visible: los mensajes se guardan por "espacio/tico".
+  const current = chatKey(workspaceId, ticoId);
   const [byTico, setByTico] = useState<Record<string, UiMessage[]>>({});
   const [phase, setPhase] = useState<ChatPhase>("idle");
   const [busyTico, setBusyTico] = useState<string | null>(null);
@@ -106,7 +109,7 @@ export function useChat(ticoId: string, lang: string): ChatApi {
 
   const send = useCallback(
     async (text: string, extras: SendExtras = {}) => {
-      const tico = ticoId;
+      const tico = current;
       const mySeq = ++seq.current;
       const userId = nextId.current++;
       const replyId = nextId.current++;
@@ -151,7 +154,8 @@ export function useChat(ticoId: string, lang: string): ChatApi {
       try {
         await api.chatSend(
           {
-            tico,
+            tico: ticoId,
+            workspace: workspaceId,
             text,
             attachCapture: Boolean(extras.capture),
             files: (extras.files ?? []).map((f) => f.path),
@@ -176,7 +180,7 @@ export function useChat(ticoId: string, lang: string): ChatApi {
         }
       }
     },
-    [append, lang, patch, ticoId],
+    [append, current, lang, patch, ticoId, workspaceId],
   );
 
   const cancel = useCallback(() => {
@@ -188,18 +192,18 @@ export function useChat(ticoId: string, lang: string): ChatApi {
 
   const clear = useCallback(() => {
     seq.current++;
-    setByTico((all) => ({ ...all, [ticoId]: [] }));
+    setByTico((all) => ({ ...all, [current]: [] }));
     setPhase("idle");
     setBusyTico(null);
-    if (isTauri()) void api.chatClear(ticoId).catch(console.error);
-  }, [ticoId]);
+    if (isTauri()) void api.chatClear(ticoId, workspaceId).catch(console.error);
+  }, [current, ticoId, workspaceId]);
 
   const notify = useCallback(
     (error: AppErrorPayload) => {
-      append(ticoId, { id: nextId.current++, role: "assistant", text: "", error });
+      append(current, { id: nextId.current++, role: "assistant", text: "", error });
       setErrorAt(Date.now());
     },
-    [append, ticoId],
+    [append, current],
   );
 
   const startTask = useCallback(
@@ -207,13 +211,13 @@ export function useChat(ticoId: string, lang: string): ChatApi {
       const id = nextId.current++;
       const task: UiMessage = { id, role: "assistant", text: "", task: { status: "working", source } };
       if (userText) {
-        append(ticoId, { id: nextId.current++, role: "user", text: userText, ...(files?.length ? { files } : {}) }, task);
+        append(current, { id: nextId.current++, role: "user", text: userText, ...(files?.length ? { files } : {}) }, task);
       } else {
-        append(ticoId, task);
+        append(current, task);
       }
       return id;
     },
-    [append, ticoId],
+    [append, current],
   );
 
   const finishTask = useCallback(
@@ -237,10 +241,13 @@ export function useChat(ticoId: string, lang: string): ChatApi {
     [],
   );
 
-  const hasMessages = useCallback((tico: string) => (byTico[tico]?.length ?? 0) > 0, [byTico]);
+  const hasMessages = useCallback(
+    (tico: string) => (byTico[chatKey(workspaceId, tico)]?.length ?? 0) > 0,
+    [byTico, workspaceId],
+  );
 
   return {
-    messages: byTico[ticoId] ?? [],
+    messages: byTico[current] ?? [],
     phase,
     busyTico,
     tokens,

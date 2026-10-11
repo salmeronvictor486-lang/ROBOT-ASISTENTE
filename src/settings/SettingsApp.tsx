@@ -7,13 +7,14 @@ import { DEFAULT_SETTINGS, findTico, type AppErrorPayload, type Settings } from 
 import { CommitInput, Row, Section, Segmented, ShortcutInput, Slider, Toggle } from "./fields";
 import { ProviderSection } from "./ProviderSection";
 import { TicosSection } from "./TicosSection";
+import { WorkspacesSection } from "./WorkspacesSection";
 import "./settings.css";
 
 const SAVE_DELAY_MS = 400;
 
 type SaveState = { kind: "idle" } | { kind: "saving" } | { kind: "saved" } | { kind: "error"; error: AppErrorPayload };
 
-const SECTIONS = ["ticos", "ai", "island", "appearance", "screen", "files", "shortcuts", "system"] as const;
+const SECTIONS = ["ticos", "workspaces", "ai", "island", "appearance", "screen", "files", "shortcuts", "system"] as const;
 type SectionId = (typeof SECTIONS)[number];
 
 declare global {
@@ -153,6 +154,8 @@ function SettingsPage({
         <h1>{t("settings.title")}</h1>
 
         <TicosSection settings={settings} update={update} />
+
+        <WorkspacesSection settings={settings} update={update} />
 
         <ProviderSection settings={settings} update={update} />
 

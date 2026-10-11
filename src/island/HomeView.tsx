@@ -1,7 +1,7 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useT, type MessageKey } from "../i18n";
-import type { TicoProfile } from "../types";
-import { IconChat, IconClip, IconEye, IconPlus, IconSparkle } from "./icons";
+import type { TicoProfile, Workspace } from "../types";
+import { IconChat, IconCheck, IconChevron, IconClip, IconEye, IconPlus, IconSparkle } from "./icons";
 import { TicoAvatar } from "./TicoAvatar";
 
 interface Props {
@@ -14,6 +14,10 @@ interface Props {
   withChat: (id: string) => boolean;
   onPickTico: (id: string) => void;
   onNewTico: () => void;
+  workspaces: Workspace[];
+  workspace: Workspace;
+  onPickWorkspace: (id: string) => void;
+  onEditWorkspaces: () => void;
   onScreen: () => void;
   onPdf: () => void;
   onFile: () => void;
@@ -31,7 +35,8 @@ const ROLES: Record<string, MessageKey> = {
 /** Pestaña de inicio: Tico grande con atajos a la izquierda y tus Ticos a la derecha. */
 export function HomeView(props: Props) {
   const t = useT();
-  const { active } = props;
+  const { active, workspace } = props;
+  const [choosing, setChoosing] = useState(false);
   const stop = (fn: () => void) => (e: React.MouseEvent) => {
     e.stopPropagation();
     fn();
@@ -60,32 +65,73 @@ export function HomeView(props: Props) {
           ))}
         </div>
       </section>
-      <section className="card ticos-card">
-        <h3>{t("island.ticos")}</h3>
-        <div className="tico-pills">
-          {props.ticos.map((p, i) => (
-            <button
-              key={p.id}
-              type="button"
-              className={`tico-pill${p.id === active.id ? " is-active" : ""}`}
-              style={{ "--pill": p.accentColor, "--i": i } as React.CSSProperties}
-              onClick={stop(() => props.onPickTico(p.id))}
-              title={p.name}
-            >
-              <span className="pill-avatar">
-                <TicoAvatar profile={p} size={30} seasonal={props.seasonal} />
-              </span>
-              <span className="pill-name">{p.name}</span>
-              {props.withChat(p.id) && <i className="pill-dot" />}
-            </button>
-          ))}
-          <button type="button" className="tico-pill add-pill" onClick={stop(props.onNewTico)}>
-            <span className="pill-avatar">
-              <IconPlus />
-            </span>
-            <span className="pill-name">{t("island.newTico")}</span>
+      <section className="card ticos-card" style={{ "--ws": workspace.color } as React.CSSProperties}>
+        <div className="ticos-head">
+          <button
+            type="button"
+            className={`ws-chip${choosing ? " is-open" : ""}`}
+            title={t("island.workspace.change")}
+            onClick={stop(() => setChoosing((c) => !c))}
+          >
+            <span className="ws-icon">{workspace.icon}</span>
+            <span className="ws-name">{workspace.name}</span>
+            <IconChevron />
           </button>
         </div>
+        {choosing ? (
+          <div className="ws-list" role="listbox" aria-label={t("island.workspace.change")}>
+            {props.workspaces.map((w, i) => (
+              <button
+                key={w.id}
+                type="button"
+                role="option"
+                aria-selected={w.id === workspace.id}
+                className={`ws-row${w.id === workspace.id ? " is-active" : ""}`}
+                style={{ "--ws": w.color, "--i": i } as React.CSSProperties}
+                onClick={stop(() => {
+                  setChoosing(false);
+                  props.onPickWorkspace(w.id);
+                })}
+              >
+                <span className="ws-icon">{w.icon}</span>
+                <span className="ws-name">{w.name}</span>
+                <small>{t("island.workspace.ticos", { count: w.ticos.length })}</small>
+                {w.id === workspace.id && <IconCheck />}
+              </button>
+            ))}
+            <button type="button" className="ws-row ws-edit" onClick={stop(props.onEditWorkspaces)}>
+              <span className="ws-icon">
+                <IconPlus />
+              </span>
+              <span className="ws-name">{t("island.workspace.edit")}</span>
+            </button>
+          </div>
+        ) : (
+          <div className="tico-pills">
+            {props.ticos.map((p, i) => (
+              <button
+                key={p.id}
+                type="button"
+                className={`tico-pill${p.id === active.id ? " is-active" : ""}`}
+                style={{ "--pill": p.accentColor, "--i": i } as React.CSSProperties}
+                onClick={stop(() => props.onPickTico(p.id))}
+                title={p.name}
+              >
+                <span className="pill-avatar">
+                  <TicoAvatar profile={p} size={30} seasonal={props.seasonal} />
+                </span>
+                <span className="pill-name">{p.name}</span>
+                {props.withChat(p.id) && <i className="pill-dot" />}
+              </button>
+            ))}
+            <button type="button" className="tico-pill add-pill" onClick={stop(props.onNewTico)}>
+              <span className="pill-avatar">
+                <IconPlus />
+              </span>
+              <span className="pill-name">{t("island.newTico")}</span>
+            </button>
+          </div>
+        )}
       </section>
     </div>
   );

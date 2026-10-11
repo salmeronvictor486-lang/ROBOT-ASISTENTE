@@ -14,6 +14,7 @@ mod settings;
 mod shortcuts;
 mod state;
 mod tray;
+mod workspace;
 
 use tauri::Manager;
 
@@ -70,6 +71,8 @@ pub fn run() {
             files::file_open,
             files::file_reveal,
             files::file_thumbnail,
+            files::folder_pick,
+            files::workspace_files,
             convert::convert_to_pdf,
             pet::pet_open_island,
             pet::pet_hide,

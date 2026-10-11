@@ -121,6 +121,11 @@ fn visible_windows() -> Vec<Candidate> {
         .collect()
 }
 
+/// App y título de la ventana que estás usando (sin contar a Tico).
+pub fn active_window() -> Option<(String, String)> {
+    pick_active_window(visible_windows()).map(|c| (c.app, c.title))
+}
+
 fn pick_active_window(windows: Vec<Candidate>) -> Option<Candidate> {
     let big_enough = |c: &Candidate| {
         c.window.width().unwrap_or(0) >= MIN_WINDOW.0 && c.window.height().unwrap_or(0) >= MIN_WINDOW.1

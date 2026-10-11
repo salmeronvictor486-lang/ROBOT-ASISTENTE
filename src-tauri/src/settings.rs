@@ -323,6 +323,93 @@ check understanding with one quick question.",
     ]
 }
 
+/// Máximo de espacios de trabajo.
+pub const MAX_WORKSPACES: usize = 12;
+
+/// Un espacio de trabajo ("Clase", "Trabajo", "Programar"…): sus Ticos, el que estaba
+/// usando, instrucciones comunes, una carpeta y las apps que lo activan solas.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct Workspace {
+    pub id: String,
+    pub name: String,
+    pub icon: String,
+    pub color: String,
+    /// Ids de los Ticos de este espacio (un mismo Tico puede estar en varios).
+    pub ticos: Vec<String>,
+    /// El último Tico usado en este espacio.
+    pub active_tico: String,
+    /// Contexto para todos sus Ticos ("estudio 2.º de Bachillerato", "la empresa hace…").
+    pub instructions: String,
+    /// Carpeta del espacio (vacío: ninguna). Sus archivos salen en la pestaña Archivos.
+    pub folder: String,
+    /// Si la app activa coincide con alguna (palabra en el nombre o el título), al abrir la
+    /// isla se cambia a este espacio.
+    pub apps: Vec<String>,
+}
+
+impl Default for Workspace {
+    fn default() -> Self {
+        Self {
+            id: "general".into(),
+            name: "General".into(),
+            icon: "🏠".into(),
+            color: "#3DD6D0".into(),
+            ticos: Vec::new(),
+            active_tico: String::new(),
+            instructions: String::new(),
+            folder: String::new(),
+            apps: Vec::new(),
+        }
+    }
+}
+
+/// Espacios de serie, hechos con los Ticos que existan: uno general con todos y, si están
+/// sus especialistas, uno para programar y otro para estudiar.
+pub fn default_workspaces(ticos: &[TicoProfile]) -> Vec<Workspace> {
+    let ids = |wanted: &[&str]| -> Vec<String> {
+        wanted
+            .iter()
+            .filter(|id| ticos.iter().any(|t| t.id == **id))
+            .map(|id| (*id).to_string())
+            .collect()
+    };
+    let mut list = vec![Workspace {
+        ticos: ticos.iter().map(|t| t.id.clone()).collect(),
+        ..Workspace::default()
+    }];
+    let code = ids(&["code", "tico"]);
+    if code.first().is_some_and(|id| id == "code") {
+        list.push(Workspace {
+            id: "code".into(),
+            name: "Programar".into(),
+            icon: "💻".into(),
+            color: "#7CF29A".into(),
+            ticos: code,
+            apps: [
+                "Visual Studio Code", "Visual Studio", "Cursor", "Xcode", "IntelliJ IDEA", "PyCharm",
+                "Android Studio", "Windows Terminal", "Terminal", "iTerm2", "PowerShell",
+            ]
+            .into_iter()
+            .map(String::from)
+            .collect(),
+            ..Workspace::default()
+        });
+    }
+    let study = ids(&["teach", "write", "translate"]);
+    if study.first().is_some_and(|id| id == "teach") {
+        list.push(Workspace {
+            id: "study".into(),
+            name: "Estudiar".into(),
+            icon: "🎓".into(),
+            color: "#5AB0FF".into(),
+            ticos: study,
+            ..Workspace::default()
+        });
+    }
+    list
+}
+
 /// Dónde se guardan los archivos convertidos (Word → PDF…).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -402,6 +489,13 @@ pub struct Settings {
     pub desktop_tico: bool,
     /// Dónde lo dejó el usuario (px lógicos de la pantalla).
     pub pet_position: Option<[f64; 2]>,
+    /// Espacios de trabajo y el activo. Si falta (ajustes de la 1.0), se crean con los
+    /// Ticos que haya.
+    #[serde(default)]
+    pub workspaces: Vec<Workspace>,
+    pub active_workspace: String,
+    /// Cambiar de espacio según la app que estés usando al abrir la isla.
+    pub auto_workspace: bool,
     /// Colores de la versión 0.x (un solo Tico). Solo se leen para migrarlos.
     #[serde(rename = "robotBaseColor", skip_serializing)]
     pub legacy_base_color: Option<String>,
@@ -442,6 +536,9 @@ impl Default for Settings {
             output_folder: OutputFolder::Downloads,
             desktop_tico: false,
             pet_position: None,
+            workspaces: default_workspaces(&default_ticos()),
+            active_workspace: "general".into(),
+            auto_workspace: true,
             legacy_base_color: None,
             legacy_accent_color: None,
         }
@@ -494,6 +591,52 @@ impl TicoProfile {
         }
         self.instructions = self.instructions.trim().chars().take(4000).collect();
         self.model = self.model.trim().to_string();
+        self
+    }
+}
+
+impl Workspace {
+    fn sanitized(mut self, ticos: &[TicoProfile]) -> Self {
+        let defaults = Workspace::default();
+        self.name = self.name.trim().chars().take(40).collect();
+        if self.name.is_empty() {
+            self.name = defaults.name.clone();
+        }
+        self.id = slug(&self.id);
+        if self.id.is_empty() {
+            self.id = slug(&self.name);
+        }
+        if self.id.is_empty() {
+            self.id = defaults.id.clone();
+        }
+        let icon = self.icon.trim();
+        if icon.is_empty() || icon.chars().count() > 4 {
+            self.icon = defaults.icon.clone();
+        } else {
+            self.icon = icon.to_string();
+        }
+        if !is_hex_color(&self.color) {
+            self.color = defaults.color;
+        }
+        let mut seen = std::collections::HashSet::new();
+        self.ticos.retain(|id| ticos.iter().any(|t| &t.id == id) && seen.insert(id.clone()));
+        if self.ticos.is_empty() {
+            self.ticos.extend(ticos.first().map(|t| t.id.clone()));
+        }
+        if !self.ticos.contains(&self.active_tico) {
+            self.active_tico = self.ticos.first().cloned().unwrap_or_default();
+        }
+        self.instructions = self.instructions.trim().chars().take(4000).collect();
+        self.folder = self.folder.trim().to_string();
+        let mut apps: Vec<String> = Vec::new();
+        for app in &self.apps {
+            let app = app.trim().to_string();
+            if !app.is_empty() && !apps.iter().any(|a| a.eq_ignore_ascii_case(&app)) {
+                apps.push(app);
+            }
+        }
+        apps.truncate(40);
+        self.apps = apps;
         self
     }
 }
@@ -568,7 +711,59 @@ impl Settings {
         if !self.ticos.iter().any(|t| t.id == self.active_tico) {
             self.active_tico = self.ticos.first().map(|t| t.id.clone()).unwrap_or_default();
         }
+
+        // Espacios: al menos uno, ids únicos y solo con Ticos que existen.
+        if self.workspaces.is_empty() {
+            self.workspaces = default_workspaces(&self.ticos);
+        }
+        let mut seen = std::collections::HashSet::new();
+        let ticos = &self.ticos;
+        self.workspaces = std::mem::take(&mut self.workspaces)
+            .into_iter()
+            .take(MAX_WORKSPACES)
+            .map(|w| w.sanitized(ticos))
+            .map(|mut w| {
+                let base = w.id.clone();
+                let mut n = 2;
+                while !seen.insert(w.id.clone()) {
+                    w.id = format!("{base}-{n}");
+                    n += 1;
+                }
+                w
+            })
+            .collect();
+        if !self.workspaces.iter().any(|w| w.id == self.active_workspace) {
+            self.active_workspace = self.workspaces.first().map(|w| w.id.clone()).unwrap_or_default();
+        }
+        // El Tico activo tiene que ser del espacio activo; y el espacio lo recuerda.
+        let active_tico = self.active_tico.clone();
+        if let Some(ws) = self.workspaces.iter_mut().find(|w| w.id == self.active_workspace) {
+            if ws.ticos.contains(&active_tico) {
+                ws.active_tico = active_tico;
+            } else {
+                self.active_tico = ws.active_tico.clone();
+            }
+        }
         self
+    }
+
+    /// El espacio activo (o uno general si, por lo que sea, no hay ninguno).
+    pub fn workspace(&self) -> Workspace {
+        self.workspaces
+            .iter()
+            .find(|w| w.id == self.active_workspace)
+            .or_else(|| self.workspaces.first())
+            .cloned()
+            .unwrap_or_default()
+    }
+
+    /// Cambia al espacio `id` y a su último Tico.
+    pub fn switch_workspace(&mut self, id: &str) {
+        let Some(ws) = self.workspaces.iter().find(|w| w.id == id) else {
+            return;
+        };
+        self.active_workspace = ws.id.clone();
+        self.active_tico = ws.active_tico.clone();
     }
 
     /// El Tico con ese id, o el activo si no existe.
@@ -595,16 +790,14 @@ impl Settings {
 
     /// Lee los ajustes. Si el archivo no existe o está roto, usa los valores por defecto.
     pub fn load(path: &Path) -> Self {
-        match fs::read_to_string(path) {
-            Ok(text) => match serde_json::from_str::<Settings>(&text) {
-                Ok(settings) => settings.sanitized(),
-                Err(err) => {
-                    eprintln!("Ajustes ilegibles ({err}); uso los valores por defecto");
-                    Settings::default()
-                }
-            },
+        let settings = match fs::read_to_string(path) {
+            Ok(text) => serde_json::from_str::<Settings>(&text).unwrap_or_else(|err| {
+                eprintln!("Ajustes ilegibles ({err}); uso los valores por defecto");
+                Settings::default()
+            }),
             Err(_) => Settings::default(),
-        }
+        };
+        settings.sanitized()
     }
 
     /// Guarda de forma atómica: escribe un temporal y lo renombra.
@@ -704,13 +897,78 @@ mod tests {
     }
 
     #[test]
+    fn old_settings_get_workspaces_with_their_ticos() {
+        let own = TicoProfile { id: "mates".into(), name: "Mates".into(), ..TicoProfile::default() };
+        let mut ticos = default_ticos();
+        ticos.push(own);
+        let json = serde_json::json!({ "ticos": ticos, "activeTico": "mates" }).to_string();
+        let s: Settings = serde_json::from_str::<Settings>(&json).unwrap().sanitized();
+        let general = &s.workspaces[0];
+        assert_eq!(general.id, "general");
+        assert!(general.ticos.contains(&"mates".to_string()));
+        assert_eq!(s.active_workspace, "general");
+        assert_eq!(s.active_tico, "mates");
+        assert_eq!(general.active_tico, "mates");
+        assert!(s.workspaces.iter().any(|w| w.id == "code"));
+    }
+
+    #[test]
+    fn workspaces_are_sanitized() {
+        let ws = Workspace {
+            id: "Clase!".into(),
+            name: "  Clase ".into(),
+            icon: "no es un icono".into(),
+            color: "azul".into(),
+            ticos: vec!["nadie".into(), "teach".into(), "teach".into()],
+            active_tico: "nadie".into(),
+            apps: vec![" Word ".into(), "word".into(), "".into()],
+            ..Workspace::default()
+        };
+        let s = Settings {
+            workspaces: vec![ws.clone(), ws, Workspace { ticos: vec![], ..Workspace::default() }],
+            active_workspace: "clase".into(),
+            active_tico: "code".into(),
+            ..Settings::default()
+        }
+        .sanitized();
+        let first = &s.workspaces[0];
+        assert_eq!(first.id, "clase");
+        assert_eq!(s.workspaces[1].id, "clase-2");
+        assert_eq!(first.name, "Clase");
+        assert_eq!(first.icon, "🏠");
+        assert_eq!(first.ticos, vec!["teach".to_string()]);
+        assert_eq!(first.apps, vec!["Word".to_string()]);
+        // Un espacio vacío se queda con el primer Tico.
+        assert_eq!(s.workspaces[2].ticos, vec!["tico".to_string()]);
+        // "code" no está en "clase": el Tico activo pasa a ser el del espacio.
+        assert_eq!(s.active_tico, "teach");
+    }
+
+    #[test]
+    fn switching_workspace_restores_its_tico() {
+        let mut s = Settings::default().sanitized();
+        s.switch_workspace("study");
+        assert_eq!(s.active_workspace, "study");
+        assert_eq!(s.active_tico, "teach");
+        s.active_tico = "write".into();
+        let mut s = s.sanitized();
+        s.switch_workspace("general");
+        assert_eq!(s.active_tico, "tico");
+        s.switch_workspace("study");
+        assert_eq!(s.active_tico, "write");
+        s.switch_workspace("no-existe");
+        assert_eq!(s.active_workspace, "study");
+    }
+
+    #[test]
     fn save_and_load_roundtrip() {
         let dir = std::env::temp_dir().join(format!("tico-test-{}", std::process::id()));
         let path = dir.join("settings.json");
         let original = Settings {
             island_position: IslandPosition::Right,
             ..Settings::default()
-        };
+        }
+        .sanitized();
         original.save(&path).unwrap();
         assert_eq!(Settings::load(&path), original);
         let _ = fs::remove_dir_all(dir);

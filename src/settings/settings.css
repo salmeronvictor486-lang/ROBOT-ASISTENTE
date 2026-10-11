@@ -340,6 +340,73 @@ body,
   box-shadow: 0 0 0 1px var(--accent);
 }
 
+/* ---------- Espacios ---------- */
+
+.ws-badge {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--pill) 22%, #000);
+  font-style: normal;
+  font-size: 17px;
+}
+
+.ws-stage {
+  justify-content: flex-start;
+  min-height: 92px;
+  padding-right: 150px;
+}
+
+.ws-stage-icon {
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  flex: none;
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--pill) 30%, #000);
+  border: 1px solid color-mix(in srgb, var(--pill) 60%, transparent);
+  font-size: 32px;
+}
+
+.ws-stage-ticos {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.icon-grid {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.icon-option {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.icon-option.is-selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.folder-path {
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .tico-editor .row-control {
   max-width: 68%;
 }

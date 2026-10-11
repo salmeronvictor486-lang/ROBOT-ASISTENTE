@@ -14,7 +14,7 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::ai::models::{resolve_model, resolve_ollama_model};
 use crate::ai::router::{self, AnyProvider};
-use crate::ai::{alternating, system_prompt, ChatMessage, ChatRequest, ImageData, Provider};
+use crate::ai::{alternating, system_prompt, workspace_prompt, ChatMessage, ChatRequest, ImageData, Provider};
 use crate::error::{AppError, AppResult};
 use crate::files;
 use crate::island::lock;
@@ -42,6 +42,9 @@ pub enum ChatEvent {
 pub struct SendOptions {
     /// Id del Tico que contesta.
     pub tico: String,
+    /// Id del espacio de trabajo: cada Tico tiene una conversación por espacio.
+    #[serde(default)]
+    pub workspace: String,
     pub text: String,
     /// Mandar la captura de pantalla pendiente.
     pub attach_capture: bool,
@@ -172,6 +175,13 @@ pub async fn chat_send(
     let cancelled = move || current.load(Ordering::SeqCst) != generation;
     let settings: Settings = lock(&state.settings).clone();
     let tico = settings.tico(&options.tico);
+    let workspace = settings
+        .workspaces
+        .iter()
+        .find(|w| w.id == options.workspace)
+        .cloned()
+        .unwrap_or_else(|| settings.workspace());
+    let key = chat_key(&workspace.id, &tico.id);
     let (kind, model) = settings.provider_for(&tico);
     let provider = router::build(&settings, kind, &options.lang)?;
 
@@ -213,13 +223,31 @@ pub async fn chat_send(
     let my_id = question.id;
     let messages = {
         let mut chats = lock(&state.chat);
-        let history = chats.entry(tico.id.clone()).or_default();
+        let history = chats.entry(key.clone()).or_default();
         history.push(question);
         alternating(history)
     };
+    // Lo que sabe del espacio: su contexto y los archivos más recientes de su carpeta.
+    let folder_files = if workspace.folder.is_empty() {
+        Vec::new()
+    } else {
+        let folder = PathBuf::from(&workspace.folder);
+        tauri::async_runtime::spawn_blocking(move || files::recent_files(&folder, 30))
+            .await
+            .unwrap_or_default()
+            .into_iter()
+            .map(|f| f.name)
+            .collect()
+    };
+    // Con un solo espacio y sin nada que contar, no gastamos tokens.
+    let workspace_text = if settings.workspaces.len() > 1 || !workspace.instructions.is_empty() || !workspace.folder.is_empty() {
+        workspace_prompt(&workspace, &folder_files)
+    } else {
+        String::new()
+    };
     let request = ChatRequest {
         model,
-        system: system_prompt(&options.lang, &tico, settings.answer_length, &options.now),
+        system: system_prompt(&options.lang, &tico, settings.answer_length, &options.now, &workspace_text),
         messages,
         max_tokens: settings.answer_length.max_tokens(),
     };
@@ -257,7 +285,7 @@ pub async fn chat_send(
 
     {
         let mut chats = lock(&state.chat);
-        let history = chats.entry(tico.id.clone()).or_default();
+        let history = chats.entry(key.clone()).or_default();
         // Buscamos la pregunta por su número: otro envío puede haber movido las posiciones.
         if let Some(pos) = history.iter().position(|m| m.id == my_id) {
             if answer.is_empty() {
@@ -274,19 +302,25 @@ pub async fn chat_send(
     Ok(())
 }
 
+/// Clave de una conversación: cada Tico tiene una por espacio de trabajo.
+fn chat_key(workspace: &str, tico: &str) -> String {
+    format!("{workspace}/{tico}")
+}
+
 /// Corta la respuesta que está llegando (lo recibido hasta ahora se queda).
 #[tauri::command]
 pub fn chat_cancel(state: State<'_, AppState>) {
     state.chat_generation.fetch_add(1, Ordering::SeqCst);
 }
 
-/// Borra la conversación de un Tico (o todas) y cualquier captura pendiente.
+/// Borra la conversación de un Tico en un espacio (o todas) y cualquier captura pendiente.
 #[tauri::command]
-pub fn chat_clear(state: State<'_, AppState>, tico: Option<String>) {
+pub fn chat_clear(state: State<'_, AppState>, tico: Option<String>, workspace: Option<String>) {
     state.chat_generation.fetch_add(1, Ordering::SeqCst);
     match tico {
         Some(id) => {
-            lock(&state.chat).remove(&id);
+            let workspace = workspace.unwrap_or_else(|| lock(&state.settings).active_workspace.clone());
+            lock(&state.chat).remove(&chat_key(&workspace, &id));
         }
         None => lock(&state.chat).clear(),
     }

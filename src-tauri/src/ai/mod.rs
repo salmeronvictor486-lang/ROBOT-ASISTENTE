@@ -15,7 +15,7 @@ use std::sync::Arc;
 use serde_json::Value;
 
 use crate::error::{AppError, AppResult};
-use crate::settings::{AnswerLength, TicoProfile};
+use crate::settings::{AnswerLength, TicoProfile, Workspace};
 
 /// Imagen ya preparada para enviar (JPEG o PNG en base64). Solo vive en memoria.
 #[derive(Debug)]
@@ -264,7 +264,34 @@ pub fn connection_error(provider: &'static str, local: bool, err: reqwest::Error
 }
 
 /// Prompt de sistema de Tico, con la personalidad del Tico activo.
-pub fn system_prompt(language: &str, tico: &TicoProfile, length: AnswerLength, now: &str) -> String {
+/// Lo que la IA debe saber del espacio de trabajo: su nombre, su contexto y su carpeta.
+pub fn workspace_prompt(workspace: &Workspace, folder_files: &[String]) -> String {
+    let mut text = format!(
+        "\nThe user is working in their workspace \"{}\". Keep answers relevant to it.\n",
+        workspace.name
+    );
+    if !workspace.instructions.trim().is_empty() {
+        text.push_str(&format!("About this workspace:\n{}\n", workspace.instructions.trim()));
+    }
+    if !workspace.folder.is_empty() {
+        text.push_str(&format!("Its folder is: {}\n", workspace.folder));
+        if !folder_files.is_empty() {
+            text.push_str(&format!(
+                "Most recent files in it (the user can attach them from the Files tab): {}\n",
+                folder_files.join(", ")
+            ));
+        }
+    }
+    text
+}
+
+pub fn system_prompt(
+    language: &str,
+    tico: &TicoProfile,
+    length: AnswerLength,
+    now: &str,
+    workspace: &str,
+) -> String {
     let length = match length {
         AnswerLength::Short => "Keep answers very short: two or three sentences unless the user asks for more.",
         AnswerLength::Normal => "Keep answers short and to the point, with short sentences.",
@@ -290,6 +317,7 @@ when the user asks, e.g. \"pásame este Word a PDF\".\n",
     if !now.trim().is_empty() {
         prompt.push_str(&format!("\nThe user's local date and time: {}.\n", now.trim()));
     }
+    prompt.push_str(workspace);
     if !tico.instructions.trim().is_empty() {
         prompt.push_str(&format!("\nYour role for this user:\n{}\n", tico.instructions.trim()));
     }
@@ -391,10 +419,30 @@ mod tests {
             instructions: "Be an expert programmer.".into(),
             ..TicoProfile::default()
         };
-        let p = system_prompt("es", &tico, AnswerLength::Short, "jueves, 9 de octubre de 2026, 18:00");
+        let p = system_prompt("es", &tico, AnswerLength::Short, "jueves, 9 de octubre de 2026, 18:00", "");
         assert!(p.starts_with("You are Tico Código"));
         assert!(p.contains("Be an expert programmer."));
         assert!(p.contains("9 de octubre"));
         assert!(p.contains("very short"));
+    }
+
+    #[test]
+    fn workspace_context_goes_in_the_prompt() {
+        let ws = Workspace {
+            name: "Clase".into(),
+            instructions: "Estudio 2.º de Bachillerato".into(),
+            folder: "/home/v/Clase".into(),
+            ..Workspace::default()
+        };
+        let text = workspace_prompt(&ws, &["tema1.docx".into(), "notas.txt".into()]);
+        assert!(text.contains("\"Clase\""));
+        assert!(text.contains("Bachillerato"));
+        assert!(text.contains("tema1.docx, notas.txt"));
+        let tico = TicoProfile::default();
+        let p = system_prompt("es", &tico, AnswerLength::Normal, "", &text);
+        assert!(p.contains("Estudio 2.º"));
+        // Sin carpeta no se habla de archivos.
+        let bare = workspace_prompt(&Workspace::default(), &["x.txt".into()]);
+        assert!(!bare.contains("x.txt"));
     }
 }

@@ -277,6 +277,7 @@ pub fn open_from_shortcut(app: &AppHandle, action: &'static str) {
         if let Err(err) = place_for_cursor(app) {
             eprintln!("No se pudo colocar la isla: {err}");
         }
+        crate::workspace::auto_switch(app);
     }
     let _ = app.emit_to(ISLAND_LABEL, "island://shortcut", ShortcutPayload { action });
     focus_island(app);
@@ -365,6 +366,7 @@ fn tracker_loop(app: &AppHandle) {
                             eprintln!("No se pudo colocar la isla: {err}");
                         }
                         let _ = app.emit_to(ISLAND_LABEL, "island://edge-hover", ());
+                        crate::workspace::auto_switch(app);
                     }
                 }
                 None => detector.reset(),

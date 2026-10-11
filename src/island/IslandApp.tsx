@@ -9,6 +9,7 @@ import { Tico } from "../robot/Tico";
 import { useTripleClick } from "../robot/useTripleClick";
 import { useSettings } from "../settings/useSettings";
 import { findTico, type CapturePreview, type FileInfo, type IslandInfo, type NotchInfo, type Settings } from "../types";
+import { activeWorkspace, pickTico as withTico, switchWorkspace, workspaceTicos } from "../workspaces";
 import { ActivityIndicator } from "./ActivityIndicator";
 import { CaptureAttachment } from "./CaptureAttachment";
 import { Capsule } from "./Capsule";
@@ -91,7 +92,10 @@ function Island({ settings }: { settings: Settings }) {
   const [sleeping, setSleeping] = useState(false);
   const lastUse = useRef<number | null>(null);
   const active = findTico(settings, settings.activeTico);
-  const chat = useChat(active.id, lang);
+  const workspace = activeWorkspace(settings);
+  const chat = useChat(active.id, workspace.id, lang);
+  /** Aviso corto cuando Tico cambia de espacio solo ("Espacio: Programar"). */
+  const [wsNotice, setWsNotice] = useState<string | null>(null);
   const [capturing, setCapturing] = useState(false);
   const [pendingCapture, setPendingCapture] = useState<CapturePreview | null>(null);
   const [files, setFiles] = useState<FileInfo[]>([]);
@@ -217,13 +221,13 @@ function Island({ settings }: { settings: Settings }) {
     if (!isTauri()) return;
     setPicking(true);
     try {
-      addFiles(await api.filesPick(false));
+      addFiles(await api.filesPick(false, workspace.folder));
     } catch (e) {
       chat.notify(toAppError(e));
     } finally {
       setPicking(false);
     }
-  }, [addFiles, chat]);
+  }, [addFiles, chat, workspace.folder]);
 
   const removeFile = useCallback((path: string) => setFiles((list) => list.filter((f) => f.path !== path)), []);
 
@@ -278,7 +282,7 @@ function Island({ settings }: { settings: Settings }) {
         const error = toAppError(e);
         if (error.kind === "noDocument") {
           chat.finishTask(id, { error: { ...error, message: t("island.pickDocument"), kind: "pick" } });
-          const picked = await api.filesPick(true).catch(() => [] as FileInfo[]);
+          const picked = await api.filesPick(true, workspace.folder).catch(() => [] as FileInfo[]);
           const convertible = picked.filter((f) => f.canConvert);
           if (convertible.length) void convertFiles(convertible, "");
         } else {
@@ -288,7 +292,7 @@ function Island({ settings }: { settings: Settings }) {
         setConverting((n) => n - 1);
       }
     },
-    [chat, convertFiles, playEmote, sound, t, trackRecent],
+    [chat, convertFiles, playEmote, sound, t, trackRecent, workspace.folder],
   );
 
   // --- Enviar ---------------------------------------------------------------------------
@@ -458,10 +462,32 @@ function Island({ settings }: { settings: Settings }) {
 
   const pickTico = (id: string) => {
     if (id === active.id) return;
-    save({ ...settings, activeTico: id });
+    save(withTico(settings, id));
     setWave((w) => w + 1);
     sound("pop");
   };
+
+  const pickWorkspace = (id: string) => {
+    if (id === workspace.id) return;
+    save(switchWorkspace(settings, id));
+    setWave((w) => w + 1);
+    sound("pop");
+  };
+
+  // Rust ha cambiado de espacio porque estás en una app de otro: lo avisamos un momento.
+  useEffect(
+    () =>
+      onEvent<{ name: string; icon: string }>("island://workspace", (ws) => {
+        setWsNotice(`${ws.icon} ${ws.name}`);
+        setWave((w) => w + 1);
+      }),
+    [],
+  );
+  useEffect(() => {
+    if (wsNotice === null) return;
+    const id = window.setTimeout(() => setWsNotice(null), 3000);
+    return () => window.clearTimeout(id);
+  }, [wsNotice]);
 
   // Prioridad de expresiones: lo más importante gana.
   let expression: Expression = "idle";
@@ -512,6 +538,7 @@ function Island({ settings }: { settings: Settings }) {
   const lastReply = [...chat.messages].reverse().find((m) => m.role === "assistant");
   let status = t("island.hint");
   if (protestText) status = protestText;
+  else if (wsNotice) status = t("island.workspace.switched", { name: wsNotice });
   else if (converting > 0) status = t("island.working");
   else if (capturing) status = t("island.capturing");
   else if (chat.phase === "thinking") status = t("island.thinking");
@@ -529,7 +556,8 @@ function Island({ settings }: { settings: Settings }) {
   };
 
   const ticoChip = (
-    <span className="tico-chip" style={{ "--pill": active.accentColor } as React.CSSProperties}>
+    <span className="tico-chip" style={{ "--pill": active.accentColor } as React.CSSProperties} title={workspace.name}>
+      {settings.workspaces.length > 1 && <i className="chip-ws">{workspace.icon}</i>}
       <TicoAvatar profile={active} size={20} seasonal={settings.seasonalOutfits} />
       <span>{active.name}</span>
     </span>
@@ -567,7 +595,11 @@ function Island({ settings }: { settings: Settings }) {
         <HomeView
           tico={tico(92)}
           active={active}
-          ticos={settings.ticos}
+          ticos={workspaceTicos(settings, workspace)}
+          workspaces={settings.workspaces}
+          workspace={workspace}
+          onPickWorkspace={pickWorkspace}
+          onEditWorkspaces={() => void api.openSettings("workspaces").catch(console.error)}
           seasonal={settings.seasonalOutfits}
           status={status === t("island.hint") ? "" : status}
           withChat={chat.hasMessages}
@@ -602,6 +634,8 @@ function Island({ settings }: { settings: Settings }) {
             setTab("chat");
             focusInput();
           }}
+          folder={workspace.folder}
+          onAddFiles={addFiles}
         />
       );
     } else {
@@ -656,7 +690,11 @@ function Island({ settings }: { settings: Settings }) {
       };
 
   return (
-    <div className="island-root" style={{ "--accent": active.accentColor } as React.CSSProperties} {...browserPointer}>
+    <div
+      className="island-root"
+      style={{ "--accent": active.accentColor, "--ws": workspace.color } as React.CSSProperties}
+      {...browserPointer}
+    >
       <Capsule
         geometry={geometry}
         x={x}

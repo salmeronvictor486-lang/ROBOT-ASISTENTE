@@ -606,9 +606,13 @@ pub fn files_inspect(paths: Vec<String>) -> Vec<FileInfo> {
 
 /// Abre el selector de archivos del sistema.
 #[tauri::command]
-pub async fn files_pick(app: AppHandle, documents: bool) -> AppResult<Vec<FileInfo>> {
+pub async fn files_pick(app: AppHandle, documents: bool, dir: Option<String>) -> AppResult<Vec<FileInfo>> {
     let picked = tauri::async_runtime::spawn_blocking(move || {
         let mut dialog = app.dialog().file();
+        // Empieza en la carpeta del espacio de trabajo, si tiene.
+        if let Some(dir) = dir.map(PathBuf::from).filter(|d| d.is_dir()) {
+            dialog = dialog.set_directory(dir);
+        }
         if documents {
             dialog = dialog.add_filter(
                 "Documentos",
@@ -625,6 +629,48 @@ pub async fn files_pick(app: AppHandle, documents: bool) -> AppResult<Vec<FileIn
         .filter_map(|p| p.into_path().ok())
         .filter_map(|p| info(&p))
         .collect())
+}
+
+/// Elige una carpeta (para un espacio de trabajo). `None` si se cancela.
+#[tauri::command]
+pub async fn folder_pick(app: AppHandle) -> AppResult<Option<String>> {
+    let picked = tauri::async_runtime::spawn_blocking(move || app.dialog().file().blocking_pick_folder())
+        .await
+        .map_err(|e| AppError::File(e.to_string()))?;
+    Ok(picked.and_then(|p| p.into_path().ok()).map(|p| p.to_string_lossy().into_owned()))
+}
+
+/// Máximo de archivos que se enseñan de la carpeta de un espacio.
+const FOLDER_FILES: usize = 40;
+
+/// Archivos de una carpeta (sin entrar en subcarpetas ni ocultos), los más recientes primero.
+pub fn recent_files(folder: &Path, limit: usize) -> Vec<FileInfo> {
+    let Ok(entries) = std::fs::read_dir(folder) else {
+        return Vec::new();
+    };
+    let mut found: Vec<(std::time::SystemTime, FileInfo)> = entries
+        .filter_map(Result::ok)
+        .filter(|e| !e.file_name().to_string_lossy().starts_with(['.', '~']))
+        .filter_map(|e| {
+            let meta = e.metadata().ok()?;
+            let modified = meta.modified().unwrap_or(std::time::UNIX_EPOCH);
+            meta.is_file().then(|| info(&e.path())).flatten().map(|i| (modified, i))
+        })
+        .collect();
+    found.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.name.cmp(&b.1.name)));
+    found.into_iter().take(limit).map(|(_, i)| i).collect()
+}
+
+/// Archivos de la carpeta de un espacio de trabajo.
+#[tauri::command]
+pub async fn workspace_files(folder: String) -> AppResult<Vec<FileInfo>> {
+    let folder = PathBuf::from(folder);
+    if !folder.is_dir() {
+        return Err(AppError::File("la carpeta ya no existe".into()));
+    }
+    tauri::async_runtime::spawn_blocking(move || recent_files(&folder, FOLDER_FILES))
+        .await
+        .map_err(|e| AppError::File(e.to_string()))
 }
 
 fn existing(path: &str) -> AppResult<PathBuf> {
@@ -794,5 +840,21 @@ mod tests {
     fn truncate_marks_the_cut() {
         assert_eq!(truncate("  corto ", 10), "corto");
         assert!(truncate(&"x".repeat(50), 10).ends_with("too long]"));
+    }
+
+    #[test]
+    fn folder_lists_recent_visible_files() {
+        let dir = std::env::temp_dir().join(format!("tico-folder-{}", std::process::id()));
+        std::fs::create_dir_all(dir.join("sub")).unwrap();
+        std::fs::write(dir.join("tema1.docx"), "a").unwrap();
+        std::fs::write(dir.join(".oculto"), "b").unwrap();
+        std::fs::write(dir.join("~$tema1.docx"), "c").unwrap();
+        std::fs::write(dir.join("notas.txt"), "d").unwrap();
+        let names: Vec<String> = recent_files(&dir, 10).into_iter().map(|f| f.name).collect();
+        assert_eq!(names.len(), 2);
+        assert!(names.contains(&"tema1.docx".to_string()) && names.contains(&"notas.txt".to_string()));
+        assert_eq!(recent_files(&dir, 1).len(), 1);
+        assert!(recent_files(&dir.join("no-existe"), 10).is_empty());
+        let _ = std::fs::remove_dir_all(dir);
     }
 }

@@ -123,6 +123,29 @@ export interface TicoProfile {
   model: string;
 }
 
+/** Un espacio de trabajo: sus Ticos, contexto, carpeta y apps que lo activan. */
+export interface Workspace {
+  id: string;
+  name: string;
+  icon: string;
+  color: string;
+  /** Ids de sus Ticos (un Tico puede estar en varios espacios). */
+  ticos: string[];
+  /** El último Tico usado en este espacio. */
+  activeTico: string;
+  /** Contexto para todos sus Ticos. */
+  instructions: string;
+  /** Carpeta del espacio ("" si ninguna). */
+  folder: string;
+  /** Apps (o palabras del título) que hacen cambiar a este espacio. */
+  apps: string[];
+}
+
+/** Iconos para elegir en los espacios. */
+export const WORKSPACE_ICONS = ["🏠", "💼", "🎓", "💻", "🎨", "📚", "🧪", "🎮", "✈️", "💡", "📝", "🎵", "🏋️", "🛒", "❤️", "⭐"];
+
+export const MAX_WORKSPACES = 12;
+
 export interface Settings {
   language: LanguageSetting;
   theme: ThemeSetting;
@@ -156,6 +179,10 @@ export interface Settings {
   desktopTico: boolean;
   /** Dónde lo dejó el usuario (lo guarda Rust al arrastrarlo). */
   petPosition: [number, number] | null;
+  workspaces: Workspace[];
+  activeWorkspace: string;
+  /** Cambiar de espacio según la app que estés usando. */
+  autoWorkspace: boolean;
 }
 
 /** El Tico de siempre (el primero de la lista). */
@@ -219,6 +246,46 @@ export const DEFAULT_TICOS: TicoProfile[] = [
   },
 ];
 
+/** Igual que `default_workspaces()` en Rust con los Ticos de serie. */
+export const DEFAULT_WORKSPACES: Workspace[] = [
+  {
+    id: "general",
+    name: "General",
+    icon: "🏠",
+    color: "#3DD6D0",
+    ticos: DEFAULT_TICOS.map((t) => t.id),
+    activeTico: "tico",
+    instructions: "",
+    folder: "",
+    apps: [],
+  },
+  {
+    id: "code",
+    name: "Programar",
+    icon: "💻",
+    color: "#7CF29A",
+    ticos: ["code", "tico"],
+    activeTico: "code",
+    instructions: "",
+    folder: "",
+    apps: [
+      "Visual Studio Code", "Visual Studio", "Cursor", "Xcode", "IntelliJ IDEA", "PyCharm",
+      "Android Studio", "Windows Terminal", "Terminal", "iTerm2", "PowerShell",
+    ],
+  },
+  {
+    id: "study",
+    name: "Estudiar",
+    icon: "🎓",
+    color: "#5AB0FF",
+    ticos: ["teach", "write", "translate"],
+    activeTico: "teach",
+    instructions: "",
+    folder: "",
+    apps: [],
+  },
+];
+
 export const DEFAULT_SETTINGS: Settings = {
   language: "auto",
   theme: "auto",
@@ -270,6 +337,9 @@ export const DEFAULT_SETTINGS: Settings = {
   outputFolder: "downloads",
   desktopTico: false,
   petPosition: null,
+  workspaces: DEFAULT_WORKSPACES,
+  activeWorkspace: "general",
+  autoWorkspace: true,
 };
 
 /** El Tico con ese id (o el primero). */
@@ -349,6 +419,7 @@ export interface ConvertResult {
 /** Lo que se manda a `chat_send`. */
 export interface SendOptions {
   tico: string;
+  workspace: string;
   text: string;
   attachCapture: boolean;
   files: string[];

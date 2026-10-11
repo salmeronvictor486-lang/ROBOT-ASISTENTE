@@ -13,6 +13,7 @@ import {
   type Settings,
   type TicoProfile,
 } from "../types";
+import { activeWorkspace, pickTico, selection } from "../workspaces";
 import { CommitInput, Row, Section, Toggle } from "./fields";
 
 interface Props {
@@ -46,7 +47,10 @@ export function TicosSection({ settings, update }: Props) {
       provider: null,
       model: "",
     };
-    update({ ticos: [...settings.ticos, tico] });
+    // El Tico nuevo entra en el espacio que estás usando.
+    const ws = activeWorkspace(settings);
+    const workspaces = settings.workspaces.map((w) => (w.id === ws.id ? { ...w, ticos: [...w.ticos, tico.id] } : w));
+    update({ ticos: [...settings.ticos, tico], workspaces });
     setSelectedId(tico.id);
   };
 
@@ -98,7 +102,7 @@ export function TicosSection({ settings, update }: Props) {
               {selected.id === settings.activeTico ? (
                 <span className="badge ok">{t("settings.activeTico")}</span>
               ) : (
-                <button type="button" className="button primary" onClick={() => update({ activeTico: selected.id })}>
+                <button type="button" className="button primary" onClick={() => update(selection(pickTico(settings, selected.id)))}>
                   {t("settings.useTico")}
                 </button>
               )}
@@ -172,7 +176,8 @@ export function TicosSection({ settings, update }: Props) {
               type="button"
               className="button"
               onClick={() => {
-                update({ ticos: DEFAULT_TICOS, activeTico: "tico" });
+                // Los espacios se rehacen con los Ticos de serie.
+                update({ ticos: DEFAULT_TICOS, activeTico: "tico", workspaces: [], activeWorkspace: "general" });
                 setSelectedId("tico");
               }}
             >

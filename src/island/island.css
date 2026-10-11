@@ -519,6 +519,138 @@ textarea:focus-visible {
   background: var(--pill);
 }
 
+/* ---------- Espacios de trabajo ---------- */
+
+.ticos-head {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.ws-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 3px 8px 3px 4px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--ws) 35%, transparent);
+  background: #15161a;
+  background: color-mix(in srgb, var(--ws) 12%, #0c0d0f);
+  color: #f2f0eb;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    border-color 160ms,
+    background 160ms;
+}
+
+.ws-chip:hover,
+.ws-chip.is-open {
+  border-color: var(--ws);
+}
+
+.ws-chip svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  color: var(--muted);
+  transition: transform 180ms;
+}
+
+.ws-chip.is-open svg {
+  transform: rotate(180deg);
+}
+
+.ws-icon {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  flex: none;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--ws, #8f8b82) 22%, #0c0d0f);
+  font-size: 12.5px;
+  font-style: normal;
+  line-height: 1;
+}
+
+.ws-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ws-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  overflow-y: auto;
+  scrollbar-width: none;
+  margin: 0 -4px;
+}
+
+.ws-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 8px 4px 4px;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  background: transparent;
+  color: #e6e3dc;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  animation: pop-in 260ms both cubic-bezier(0.3, 1.4, 0.5, 1);
+  animation-delay: calc(var(--i, 0) * 30ms);
+}
+
+.ws-row .ws-name {
+  flex: 1;
+  min-width: 0;
+}
+
+.ws-row small {
+  color: var(--muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+}
+
+.ws-row svg {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  color: var(--ws);
+}
+
+.ws-row:hover {
+  background: #1a1b1f;
+}
+
+.ws-row.is-active {
+  border-color: color-mix(in srgb, var(--ws) 50%, transparent);
+  background: color-mix(in srgb, var(--ws) 10%, #0c0d0f);
+}
+
+.ws-edit {
+  color: #b9b5ad;
+}
+
+.ws-edit .ws-icon {
+  background: transparent;
+  border: 1px dashed #4a4844;
+}
+
+.chip-ws {
+  font-style: normal;
+  font-size: 12px;
+  line-height: 1;
+  margin-left: 4px;
+}
+
 .add-pill {
   --pill: #8f8b82;
   color: #b9b5ad;
@@ -1154,6 +1286,52 @@ textarea:focus-visible {
   flex-direction: column;
 }
 
+.folder-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.folder-title > svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--ws, var(--accent));
+}
+
+.folder-title span {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-title .icon-button {
+  width: 22px;
+  height: 22px;
+}
+
+.folder-list {
+  flex: 1;
+  min-height: 0;
+  margin-bottom: 8px;
+}
+
+.folder-file {
+  width: 100%;
+  border: 1px solid transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.folder-file:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
 .recent-list {
   display: flex;
   flex-direction: column;
@@ -1262,6 +1440,7 @@ textarea:focus-visible {
   .file-chip,
   .file-row,
   .task-card,
+  .ws-row,
   .model-menu {
     animation: none !important;
   }

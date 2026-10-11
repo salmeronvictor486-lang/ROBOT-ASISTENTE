@@ -16,12 +16,15 @@ pub struct AppState {
     pub island: Mutex<IslandShared>,
     /// Pantallas con notch (solo MacBook), detectadas al arrancar.
     pub notch_screens: Vec<NotchScreen>,
-    /// Conversación de cada Tico, por su id (solo en memoria).
+    /// Conversación de cada Tico en cada espacio ("espacio/tico"), solo en memoria.
     pub chat: Mutex<HashMap<String, Vec<ChatMessage>>>,
     /// Captura hecha y esperando a enviarse (solo en memoria, nunca en disco).
     pub pending_capture: Mutex<Option<PendingCapture>>,
     /// Sube cada vez que se envía, cancela o borra: así un streaming viejo sabe que debe parar.
     pub chat_generation: AtomicU64,
+    /// Última app que hizo cambiar de espacio: mientras sigas en ella, si cambias de espacio
+    /// a mano, Tico no te lo vuelve a cambiar.
+    pub last_auto_app: Mutex<Option<String>>,
     pub http: reqwest::Client,
 }
 
@@ -35,6 +38,7 @@ impl AppState {
             chat: Mutex::new(HashMap::new()),
             pending_capture: Mutex::new(None),
             chat_generation: AtomicU64::new(0),
+            last_auto_app: Mutex::new(None),
             http: reqwest::Client::builder()
                 .connect_timeout(Duration::from_secs(10))
                 // Si el servicio se queda callado un minuto a mitad de respuesta, cortamos.
