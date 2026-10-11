@@ -17,7 +17,8 @@ usuario lo pide, mira la pantalla para ayudar. El documento de diseño completo 
 
 ## Fase actual
 **Versión 1.1.0**. Fases 0-6 hechas, la 1.0 (varios Ticos, 12 servicios de IA, OCR,
-archivos, Word → PDF e interfaz nueva con pestañas) y la 1.1: espacios de trabajo.
+archivos, Word → PDF e interfaz nueva con pestañas) y la 1.1: espacios de trabajo y base
+de datos local (SQLite) con ajustes, conversaciones y PDF convertidos.
 Pendiente: que Victor pruebe en Windows (y en un Mac si puede) y corregir lo que falle.
 
 | Fase | Contenido | Estado |
@@ -47,6 +48,7 @@ Lo que solo se puede verificar en un equipo real (CI solo compila y pasa tests):
   `single-instance`, `dialog`. Archivos y PDF: `zip` + `quick-xml` (leer .docx/.xlsx/.pptx),
   `pdf-extract` (leer PDF), `pdf-writer` + `ttf-parser` + `subsetter` (motor de PDF propio).
   OCR: `windows` (Windows.Media.Ocr) y `objc2-vision` (macOS).
+  Base de datos: `rusqlite` con `bundled` (SQLite compilado dentro: nada que instalar).
 - Tests: Vitest (frontend) y `cargo test` (Rust). Lint: ESLint + Clippy.
 
 ## Arquitectura
@@ -81,7 +83,8 @@ src-tauri/src/
   convert/           Word → PDF: mod.rs (Office/Pages/LibreOffice/propio), docx.rs (lector),
                      pdf.rs (motor propio con fuentes del sistema recortadas)
   secrets.rs         Claves en el llavero (nunca salen hacia el frontend)
-  settings.rs        Ajustes en JSON en la carpeta de config del sistema
+  settings.rs        Ajustes (struct, valores por defecto, saneado y migraciones)
+  db.rs              Base de datos SQLite tico.db: ajustes, conversaciones, PDF, copias
   shortcuts.rs       Atajos globales (abrir y capturar)
   tray.rs            Menú de la bandeja/barra de menús traducido (con "Tico en el escritorio")
   pet.rs             Ventana de Tico en el escritorio: crearla, quitarla y recordar dónde está
@@ -197,6 +200,16 @@ src-tauri/src/
     cambia al espacio cuyas apps coinciden (por palabra, como las apps bloqueadas); solo cuando
     cambias de app, para no pisar un cambio hecho a mano. Los ajustes de la 1.0 (sin
     `workspaces`) estrenan los espacios con los Ticos que ya tenían.
+36. **Base de datos local (1.1)**: `tico.db` (SQLite con `rusqlite` + `bundled`) en la carpeta
+    de datos de la app, en modo WAL. Tablas `settings` (una fila con el JSON de `Settings`:
+    así los campos nuevos no necesitan migración), `messages` (por espacio y Tico) y
+    `conversions`. El esquema va en `PRAGMA user_version`; un cambio de tablas añade un paso
+    en `db::migrate`. La primera vez se importa el `settings.json` antiguo (queda como
+    `settings.json.bak`). De cada mensaje solo se guarda el texto, los archivos adjuntos y si
+    llevaba captura: ni la imagen ni el texto OCR tocan el disco. Al volver a una
+    conversación se cargan los 60 últimos mensajes y a la IA se le mandan como mucho los 30
+    últimos. Una pregunta se guarda junto a su respuesta (en una transacción) y solo si hubo
+    respuesta. Si el archivo está roto se aparta (`tico.db.broken-…`) y se crea otro.
 
 ## Anuncio (`promo/`)
 `promo.html` + `src/promo/` dibujan el anuncio de 35 s con los componentes reales (Tico,

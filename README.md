@@ -57,6 +57,13 @@ chatea contigo y, solo cuando tú se lo pides, mira tu pantalla para ayudarte.
   sobre tus ventanas. Te sigue con la mirada, lo arrastras donde quieras (se acuerda) y al
   pulsarlo abre la isla. Clic derecho para su menú.
 - **Respuestas con formato**: listas, negritas y código, con botón para copiarlas.
+- **Lo recuerda todo, en tu ordenador**: los ajustes, las conversaciones de cada Tico en cada
+  espacio y los PDF convertidos se guardan en una base de datos local (`tico.db`, SQLite). No
+  sale de tu ordenador: sin cuentas ni servidores. Desde **Ajustes → Datos** puedes ver qué
+  ocupa, hacer una copia de seguridad, borrarlo o dejar de guardar las conversaciones. Las
+  capturas nunca se guardan y las claves de API van en el llavero del sistema.
+  La base de datos está en `%APPDATA%\com.victorsalmeron.tico\` (Windows) o en
+  `~/Library/Application Support/com.victorsalmeron.tico/` (Mac).
 - **Personalizable**: tamaño, posición, retardos, tema, idioma (castellano, català,
   English), largo de las respuestas, atajos, apps bloqueadas, sonidos e inicio con el
   sistema.
