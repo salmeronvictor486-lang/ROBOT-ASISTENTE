@@ -59,6 +59,10 @@ export interface ChatApi {
   /** Añade el mensaje del usuario y una tarjeta de "convirtiendo…"; devuelve su id. */
   startTask: (userText: string, source: string, files?: FileInfo[]) => number;
   finishTask: (id: number, outcome: { result: ConvertResult } | { error: AppErrorPayload }) => void;
+  /** Vuelve a mandar la pregunta de una respuesta que falló. */
+  retry: (replyId: number) => void;
+  /** Pide otra respuesta a la última pregunta. */
+  regenerate: () => void;
   /** ¿Tiene conversación este Tico en el espacio activo? */
   hasMessages: (tico: string) => boolean;
 }
@@ -97,6 +101,12 @@ export function useChat(ticoId: string, workspaceId: string, lang: string): Chat
   const nextId = useRef(1);
   // Cada envío tiene su número: un envío viejo (cancelado) no toca el estado del nuevo.
   const seq = useRef(0);
+
+  // Los mensajes en una ref: reintentar y regenerar los leen sin depender del render.
+  const byTicoRef = useRef(byTico);
+  useEffect(() => {
+    byTicoRef.current = byTico;
+  }, [byTico]);
 
   const patch = useCallback((tico: string, id: number, fn: (m: UiMessage) => UiMessage) => {
     setByTico((all) => ({
@@ -290,6 +300,38 @@ export function useChat(ticoId: string, workspaceId: string, lang: string): Chat
     [],
   );
 
+  /** Quita del chat dos mensajes (pregunta y respuesta). */
+  const drop = useCallback(
+    (ids: number[]) => setByTico((all) => ({ ...all, [current]: (all[current] ?? []).filter((m) => !ids.includes(m.id)) })),
+    [current],
+  );
+
+  const retry = useCallback(
+    (replyId: number) => {
+      const list = byTicoRef.current[current] ?? [];
+      const index = list.findIndex((m) => m.id === replyId);
+      const question = list[index - 1];
+      if (index < 1 || !question || question.role !== "user") return;
+      drop([question.id, replyId]);
+      void send(question.text, question.files?.length ? { files: question.files } : {});
+    },
+    [current, drop, send],
+  );
+
+  const regenerate = useCallback(() => {
+    const list = byTicoRef.current[current] ?? [];
+    const answer = list[list.length - 1];
+    const question = list[list.length - 2];
+    if (!answer || !question || answer.role !== "assistant" || question.role !== "user" || answer.task) return;
+    drop([question.id, answer.id]);
+    const again = () => void send(question.text, question.files?.length ? { files: question.files } : {});
+    if (isTauri()) {
+      api.chatForgetLast(workspaceId, ticoId).then(again).catch(console.error);
+    } else {
+      again();
+    }
+  }, [current, drop, send, ticoId, workspaceId]);
+
   const hasMessages = useCallback(
     (tico: string) => (byTico[chatKey(workspaceId, tico)]?.length ?? 0) > 0,
     [byTico, workspaceId],
@@ -308,6 +350,8 @@ export function useChat(ticoId: string, workspaceId: string, lang: string): Chat
     notify,
     startTask,
     finishTask,
+    retry,
+    regenerate,
     hasMessages,
   };
 }

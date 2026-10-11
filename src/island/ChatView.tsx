@@ -1,11 +1,21 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
+import { commandQuery, matchCommands, type Command } from "./commands";
 import { useT } from "../i18n";
 import type { FileInfo } from "../types";
 import { FILE_KINDS } from "./fileKinds";
-import { IconClip, IconClose, IconCopy, IconEye, IconSend, IconStop } from "./icons";
+import { IconClip, IconClose, IconCopy, IconEye, IconGear, IconSend, IconSparkle, IconStop } from "./icons";
 import { Markdown } from "./Markdown";
 import { TaskCard } from "./TaskCard";
-import { errorKey, errorVars, type ChatApi } from "./useChat";
+import { errorKey, errorVars, type ChatApi, type UiMessage } from "./useChat";
+
+/** Errores que se arreglan en Ajustes → IA (clave, saldo, modelo, servidor…). */
+const SETTINGS_ERRORS = new Set(["missingKey", "invalidKey", "noCredit", "model", "serverOffline", "ollamaOffline", "missingUrl", "keyring"]);
+
+/** Una idea para empezar cuando el chat está vacío. */
+export interface Suggestion {
+  label: string;
+  run: () => void;
+}
 
 interface Props {
   /** Tico grande a la izquierda (reacciona a lo que pasa en el chat). */
@@ -28,6 +38,11 @@ interface Props {
   lookDisabled: boolean;
   onOpenPermission: () => void;
   onCopied: () => void;
+  /** Abre Ajustes en la sección de IA (para errores de clave, saldo, modelo…). */
+  onOpenAiSettings: () => void;
+  /** Comandos de la paleta "/". */
+  commands: Command[];
+  suggestions: Suggestion[];
 }
 
 /** Pestaña de chat: Tico a la izquierda, mensajes y cuadro de texto a la derecha. */
@@ -49,10 +64,29 @@ export function ChatView({
   lookDisabled,
   onOpenPermission,
   onCopied,
+  onOpenAiSettings,
+  commands,
+  suggestions,
 }: Props) {
   const t = useT();
   const listRef = useRef<HTMLDivElement>(null);
   const busy = chat.phase !== "idle";
+
+  // Paleta de comandos: se abre al escribir "/" y se cierra con Esc hasta que cambie el texto.
+  const [dismissed, setDismissed] = useState<string | null>(null);
+  const [selected, setSelected] = useState(0);
+  const query = commandQuery(draft);
+  const matches = query === null || dismissed === draft ? [] : matchCommands(query, commands);
+  const menuOpen = matches.length > 0;
+  const active = Math.min(selected, Math.max(0, matches.length - 1));
+  const runCommand = (command: Command) => {
+    setDraft("");
+    setSelected(0);
+    command.run();
+  };
+
+  const lastId = chat.messages[chat.messages.length - 1]?.id;
+  const before = (m: UiMessage): UiMessage | undefined => chat.messages[chat.messages.findIndex((x) => x.id === m.id) - 1];
 
   // Siempre mostramos lo último que ha llegado.
   useEffect(() => {
@@ -70,7 +104,26 @@ export function ChatView({
       <div className="chat-side">{tico}</div>
       <div className="chat-main">
         <div className="messages" ref={listRef}>
-          {chat.messages.length === 0 && <p className="empty-chat">{t("island.emptyChat")}</p>}
+          {chat.messages.length === 0 && (
+            <div className="empty-chat">
+              <p>{t("island.emptyChat")}</p>
+              <div className="suggestions">
+                {suggestions.map((s, i) => (
+                  <button
+                    key={s.label}
+                    type="button"
+                    className="suggestion"
+                    style={{ "--i": i } as React.CSSProperties}
+                    onClick={stop(s.run)}
+                  >
+                    <IconSparkle />
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+              <p className="slash-tip">{t("island.slashTip")}</p>
+            </div>
+          )}
           {chat.messages.map((m) => (
             <div key={m.id} className={`message message-${m.role}${m.task ? " message-task" : ""}`}>
               {m.thumbnail && <img className="message-thumb" src={m.thumbnail} alt="" />}
@@ -91,7 +144,16 @@ export function ChatView({
                   {t(`island.notice.${n.kind}`, { detail: n.detail })}
                 </p>
               ))}
-              {m.role === "assistant" && m.text && !busy && <CopyButton text={m.text} onCopied={onCopied} />}
+              {m.role === "assistant" && m.text && !busy && (
+                <div className="message-actions">
+                  <CopyButton text={m.text} onCopied={onCopied} />
+                  {m.id === lastId && !m.task && !before(m)?.thumbnail && !before(m)?.capture && (
+                    <button type="button" className="copy-button" onClick={stop(chat.regenerate)}>
+                      ↻ {t("island.regenerate")}
+                    </button>
+                  )}
+                </div>
+              )}
               {m.role === "assistant" && !m.text && !m.error && !m.task && busy && (
                 <p className="typing" aria-label={t("island.thinking")}>
                   <span />
@@ -100,10 +162,24 @@ export function ChatView({
                 </p>
               )}
               {m.error && <p className="message-error">{t(errorKey(m.error), errorVars(m.error))}</p>}
-              {m.error?.kind === "screenPermission" && (
-                <button type="button" className="pill-button" onClick={stop(onOpenPermission)}>
-                  {t("island.openPermission")}
-                </button>
+              {m.error && !busy && (
+                <div className="error-actions">
+                  {before(m)?.role === "user" && !m.task && (
+                    <button type="button" className="pill-button primary" onClick={stop(() => chat.retry(m.id))}>
+                      ↻ {t("island.retry")}
+                    </button>
+                  )}
+                  {SETTINGS_ERRORS.has(m.error.kind) && (
+                    <button type="button" className="pill-button" onClick={stop(onOpenAiSettings)}>
+                      <IconGear /> {t(m.error.kind === "missingKey" ? "island.addKey" : "island.fixInSettings")}
+                    </button>
+                  )}
+                  {m.error.kind === "screenPermission" && (
+                    <button type="button" className="pill-button" onClick={stop(onOpenPermission)}>
+                      {t("island.openPermission")}
+                    </button>
+                  )}
+                </div>
               )}
             </div>
           ))}
@@ -131,6 +207,26 @@ export function ChatView({
               ))}
             </div>
           )}
+          {menuOpen && (
+            <div className="command-menu" role="listbox" aria-label={t("island.commands")}>
+              {matches.map((c, i) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  role="option"
+                  aria-selected={i === active}
+                  className={`command-row${i === active ? " is-active" : ""}`}
+                  onMouseEnter={() => setSelected(i)}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={stop(() => runCommand(c))}
+                >
+                  <span className="command-icon">{c.icon}</span>
+                  <span className="command-label">{c.label}</span>
+                  <span className="command-slug">/{c.slug}</span>
+                </button>
+              ))}
+            </div>
+          )}
           <div className="composer-top">{modelPicker}</div>
           <div className="composer-row">
             <button type="button" className="round-button" title={t("island.attach")} onClick={stop(onAttach)}>
@@ -150,8 +246,34 @@ export function ChatView({
               rows={1}
               value={draft}
               placeholder={t("island.placeholderTico", { name: ticoName })}
-              onChange={(e) => setDraft(e.target.value)}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                setSelected(0);
+              }}
+              aria-autocomplete="list"
+              aria-expanded={menuOpen}
               onKeyDown={(e) => {
+                if (menuOpen) {
+                  const count = matches.length;
+                  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+                    e.preventDefault();
+                    setSelected((active + (e.key === "ArrowDown" ? 1 : count - 1)) % count);
+                    return;
+                  }
+                  if ((e.key === "Enter" && !e.shiftKey) || e.key === "Tab") {
+                    e.preventDefault();
+                    const command = matches[active];
+                    if (command) runCommand(command);
+                    return;
+                  }
+                  if (e.key === "Escape") {
+                    // Solo cierra la paleta, no la isla.
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDismissed(draft);
+                    return;
+                  }
+                }
                 // Intro envía; Mayús+Intro hace salto de línea.
                 if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                   e.preventDefault();

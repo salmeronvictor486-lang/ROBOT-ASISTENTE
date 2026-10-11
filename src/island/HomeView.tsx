@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useT, type MessageKey } from "../i18n";
-import type { TicoProfile, Workspace } from "../types";
+import type { TicoProfile, UpdateInfo, Workspace } from "../types";
 import { IconChat, IconCheck, IconChevron, IconClip, IconEye, IconPlus, IconSparkle } from "./icons";
 import { TicoAvatar } from "./TicoAvatar";
 
@@ -18,6 +18,9 @@ interface Props {
   workspace: Workspace;
   onPickWorkspace: (id: string) => void;
   onEditWorkspaces: () => void;
+  update: UpdateInfo | null;
+  onGetUpdate: (update: UpdateInfo) => void;
+  onDismissUpdate: (update: UpdateInfo) => void;
   onScreen: () => void;
   onPdf: () => void;
   onFile: () => void;
@@ -50,6 +53,22 @@ export function HomeView(props: Props) {
   return (
     <div className="home-view">
       <section className="card hero-card">
+        {props.update && (
+          <div className="update-bar" role="status">
+            <span>✨ {t("island.update.available", { version: props.update.version })}</span>
+            <button type="button" className="update-get" onClick={stop(() => props.update && props.onGetUpdate(props.update))}>
+              {t("island.update.get")}
+            </button>
+            <button
+              type="button"
+              className="update-close"
+              title={t("island.update.later")}
+              onClick={stop(() => props.update && props.onDismissUpdate(props.update))}
+            >
+              ×
+            </button>
+          </div>
+        )}
         <div className="hero-tico">{props.tico}</div>
         <div className="hero-text">
           <h2>{t("island.greeting", { name: active.name })}</h2>

@@ -383,6 +383,24 @@ pub fn chat_history(state: State<'_, AppState>, workspace: String, tico: String)
     state.db.history(&workspace, &tico, HISTORY_LOADED)
 }
 
+/// Olvida la última pregunta y su respuesta, para volver a preguntar ("Regenerar").
+#[tauri::command]
+pub fn chat_forget_last(state: State<'_, AppState>, workspace: String, tico: String) -> AppResult<()> {
+    state.chat_generation.fetch_add(1, Ordering::SeqCst);
+    if let Some(history) = lock(&state.chat).get_mut(&chat_key(&workspace, &tico)) {
+        if history.last().is_some_and(|m| m.role == Role::Assistant) {
+            history.pop();
+        }
+        if history.last().is_some_and(|m| m.role == Role::User) {
+            history.pop();
+        }
+    }
+    if lock(&state.settings).save_history {
+        state.db.forget_last_exchange(&workspace, &tico)?;
+    }
+    Ok(())
+}
+
 /// Borra todas las conversaciones, en memoria y en la base de datos.
 #[tauri::command]
 pub fn history_clear_all(app: AppHandle, state: State<'_, AppState>) -> AppResult<()> {

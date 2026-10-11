@@ -1,6 +1,6 @@
 import { getCurrentWebview } from "@tauri-apps/api/webview";
 import { useCallback, useEffect, useReducer, useRef, useState } from "react";
-import { I18nContext, resolveLang, useI18nLang, useT } from "../i18n";
+import { I18nContext, resolveLang, useI18nLang, useT, type MessageKey } from "../i18n";
 import { playSound, type SoundKind } from "../lib/sound";
 import { api, isTauri, onEvent, toAppError } from "../lib/tauri";
 import type { Expression } from "../robot/expressions";
@@ -8,7 +8,7 @@ import { setGaze } from "../robot/gaze";
 import { Tico } from "../robot/Tico";
 import { useTripleClick } from "../robot/useTripleClick";
 import { useSettings } from "../settings/useSettings";
-import { findTico, type CapturePreview, type FileInfo, type IslandInfo, type NotchInfo, type Settings } from "../types";
+import { findTico, type UpdateInfo, type CapturePreview, type FileInfo, type IslandInfo, type NotchInfo, type Settings } from "../types";
 import { activeWorkspace, pickTico as withTico, switchWorkspace, workspaceTicos } from "../workspaces";
 import { ActivityIndicator } from "./ActivityIndicator";
 import { CaptureAttachment } from "./CaptureAttachment";
@@ -17,6 +17,8 @@ import { ChatView } from "./ChatView";
 import { FilesView } from "./FilesView";
 import { Header, type Tab } from "./Header";
 import { HomeView } from "./HomeView";
+import type { Command } from "./commands";
+import type { Suggestion } from "./ChatView";
 import { wantsPdf, wantsScreen } from "./intents";
 import { initialIsland, islandReducer, shouldAutoHide } from "./machine";
 import { ModelPicker } from "./ModelPicker";
@@ -94,6 +96,35 @@ function Island({ settings }: { settings: Settings }) {
   const active = findTico(settings, settings.activeTico);
   const workspace = activeWorkspace(settings);
   const chat = useChat(active.id, workspace.id, lang);
+  // ¿Hay versión nueva? Se mira a los 5 s de arrancar y luego cada 12 horas.
+  const [update, setUpdate] = useState<UpdateInfo | null>(null);
+  const [dismissedUpdate, setDismissedUpdate] = useState(() => {
+    try {
+      return localStorage.getItem("tico.dismissedUpdate");
+    } catch {
+      return null;
+    }
+  });
+  useEffect(() => {
+    if (!isTauri() || !settings.checkUpdates) return;
+    const check = () => void api.updateCheck().then(setUpdate).catch(() => undefined);
+    const first = window.setTimeout(check, 5000);
+    const every = window.setInterval(check, 12 * 60 * 60 * 1000);
+    return () => {
+      window.clearTimeout(first);
+      window.clearInterval(every);
+    };
+  }, [settings.checkUpdates]);
+  const dismissUpdate = (version: string) => {
+    setDismissedUpdate(version);
+    try {
+      localStorage.setItem("tico.dismissedUpdate", version);
+    } catch {
+      // Sin almacenamiento: se volverá a avisar la próxima vez.
+    }
+  };
+  const shownUpdate = update && update.version !== dismissedUpdate ? update : null;
+
   /** Aviso corto cuando Tico cambia de espacio solo ("Espacio: Programar"). */
   const [wsNotice, setWsNotice] = useState<string | null>(null);
   const [capturing, setCapturing] = useState(false);
@@ -383,6 +414,81 @@ function Island({ settings }: { settings: Settings }) {
     chat.clear();
   }, [chat]);
 
+  /** Pasar a PDF lo que haya soltado, o el documento abierto. */
+  const toPdf = (label: string) => {
+    setTab("chat");
+    const docs = files.filter((f) => f.canConvert);
+    if (docs.length) void convertFiles(docs, label);
+    else void convertActiveDocument(label);
+  };
+
+  /** Deja un principio de frase en el cuadro de texto ("Traduce al inglés: "). */
+  const prefill = (text: string) => {
+    setTab("chat");
+    setDraft(text);
+    focusInput();
+  };
+
+  // Paleta "/": acciones, cambiar de Tico y de espacio.
+  const meta = (id: string, icon: string) => ({
+    id,
+    icon,
+    label: t(`command.${id}` as MessageKey),
+    slug: t(`command.${id}.slug` as MessageKey),
+  });
+  const commands: Command[] = [
+    { ...meta("screen", "👁"), run: () => void lookAtScreen() },
+    { ...meta("pdf", "📄"), run: () => toPdf(t("island.quick.pdf")) },
+    { ...meta("file", "📎"), run: () => void pickFiles() },
+    {
+      ...meta("summary", "📝"),
+      run: () =>
+        files.length ? sendMessage(t("island.prompt.summary"), pendingCapture, files) : prefill(t("command.summary.prefix")),
+    },
+    { ...meta("translate", "🌐"), run: () => prefill(t("command.translate.prefix")) },
+    { ...meta("improve", "✍️"), run: () => prefill(t("command.improve.prefix")) },
+    { ...meta("explain", "🎓"), run: () => prefill(t("command.explain.prefix")) },
+    { ...meta("new", "🧹"), run: clearChat },
+    ...workspaceTicos(settings, workspace)
+      .filter((p) => p.id !== active.id)
+      .map((p) => ({
+        id: `tico:${p.id}`,
+        icon: "🤖",
+        label: t("command.talkTo", { name: p.name }),
+        slug: p.name.toLowerCase().replace(/\s+/g, "-"),
+        run: () => pickTico(p.id),
+      })),
+    ...settings.workspaces
+      .filter((w) => w.id !== workspace.id)
+      .map((w) => ({
+        id: `ws:${w.id}`,
+        icon: w.icon,
+        label: t("command.goTo", { name: w.name }),
+        slug: w.name.toLowerCase().replace(/\s+/g, "-"),
+        run: () => pickWorkspace(w.id),
+      })),
+    { ...meta("settings", "⚙️"), run: () => void api.openSettings().catch(console.error) },
+  ];
+
+  // Ideas para empezar según el Tico (los personalizados usan las del Tico general).
+  const SUGGESTIONS: Record<string, [MessageKey, "screen" | "prefill" | "file" | "pdf"][]> = {
+    tico: [["suggest.tico.1", "screen"], ["suggest.tico.2", "file"], ["suggest.tico.3", "pdf"]],
+    code: [["suggest.code.1", "screen"], ["suggest.code.2", "prefill"], ["suggest.code.3", "prefill"]],
+    translate: [["suggest.translate.1", "screen"], ["suggest.translate.2", "prefill"], ["suggest.translate.3", "file"]],
+    write: [["suggest.write.1", "prefill"], ["suggest.write.2", "prefill"], ["suggest.write.3", "screen"]],
+    teach: [["suggest.teach.1", "screen"], ["suggest.teach.2", "prefill"], ["suggest.teach.3", "prefill"]],
+  };
+  const suggestions: Suggestion[] = (SUGGESTIONS[active.id] ?? SUGGESTIONS.tico ?? []).map(([key, kind]) => {
+    const text = t(key);
+    const run = {
+      screen: () => void lookAtScreen(text),
+      prefill: () => prefill(text),
+      file: () => void pickFiles(),
+      pdf: () => toPdf(text),
+    }[kind];
+    return { label: text.replace(/[:…]\s*$/u, ""), run };
+  });
+
   const discardCapture = useCallback(() => {
     setPendingCapture(null);
     if (isTauri()) void api.captureDiscard().catch(console.error);
@@ -613,18 +719,16 @@ function Island({ settings }: { settings: Settings }) {
           workspace={workspace}
           onPickWorkspace={pickWorkspace}
           onEditWorkspaces={() => void api.openSettings("workspaces").catch(console.error)}
+          update={shownUpdate}
+          onGetUpdate={(u) => void api.openUrl(u.url).catch(console.error)}
+          onDismissUpdate={(u) => dismissUpdate(u.version)}
           seasonal={settings.seasonalOutfits}
           status={status === t("island.hint") ? "" : status}
           withChat={chat.hasMessages}
           onPickTico={pickTico}
           onNewTico={() => void api.openSettings("ticos").catch(console.error)}
           onScreen={() => void lookAtScreen()}
-          onPdf={() => {
-            setTab("chat");
-            const docs = files.filter((f) => f.canConvert);
-            if (docs.length) void convertFiles(docs, t("island.quick.pdf"));
-            else void convertActiveDocument(t("island.quick.pdf"));
-          }}
+          onPdf={() => toPdf(t("island.quick.pdf"))}
           onFile={() => void pickFiles()}
           onNewChat={() => {
             clearChat();
@@ -671,6 +775,9 @@ function Island({ settings }: { settings: Settings }) {
           lookDisabled={capturing || !isTauri()}
           onOpenPermission={() => void api.openScreenPermissionSettings().catch(console.error)}
           onCopied={() => playEmote("wink", 1200)}
+          onOpenAiSettings={() => void api.openSettings("ai").catch(console.error)}
+          commands={commands}
+          suggestions={suggestions}
         />
       );
     }

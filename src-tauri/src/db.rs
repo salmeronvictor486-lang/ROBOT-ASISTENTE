@@ -209,6 +209,16 @@ impl Db {
         Ok(list)
     }
 
+    /// Borra la última pregunta y su respuesta (para pedir otra respuesta).
+    pub fn forget_last_exchange(&self, workspace: &str, tico: &str) -> AppResult<()> {
+        lock(&self.conn).execute(
+            "DELETE FROM messages WHERE id IN (
+                SELECT id FROM messages WHERE workspace = ?1 AND tico = ?2 ORDER BY id DESC LIMIT 2)",
+            params![workspace, tico],
+        )?;
+        Ok(())
+    }
+
     pub fn clear_chat(&self, workspace: &str, tico: &str) -> AppResult<()> {
         lock(&self.conn).execute("DELETE FROM messages WHERE workspace = ?1 AND tico = ?2", params![workspace, tico])?;
         Ok(())
@@ -356,6 +366,8 @@ mod tests {
         assert_eq!(last[0].text, "¿Y un átomo?");
         assert_eq!(last[1].text, "La unidad de la materia.");
 
+        db.forget_last_exchange("clase", "teach").unwrap();
+        assert_eq!(db.history("clase", "teach", 100).unwrap().len(), 2);
         db.clear_chat("clase", "teach").unwrap();
         assert!(db.history("clase", "teach", 100).unwrap().is_empty());
         assert_eq!(db.history("trabajo", "teach", 100).unwrap().len(), 2);
