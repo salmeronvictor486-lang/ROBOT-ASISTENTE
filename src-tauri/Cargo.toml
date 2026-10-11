@@ -38,6 +38,7 @@ miniz_oxide = "0.9.1"
 tauri-plugin-dialog = "2"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 subsetter = { version = "0.2.6", default-features = false }
+rusqlite = { version = "0.40.2", features = ["bundled"] }
 
 [profile.release]
 codegen-units = 1

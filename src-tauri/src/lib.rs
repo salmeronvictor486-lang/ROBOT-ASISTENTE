@@ -3,6 +3,7 @@ mod capture;
 mod chat;
 mod commands;
 mod convert;
+mod db;
 mod error;
 mod files;
 mod island;
@@ -53,12 +54,16 @@ pub fn run() {
             commands::open_settings,
             commands::set_ui_language,
             commands::open_url,
+            commands::db_info,
+            commands::db_backup,
             island::island_set_rect,
             island::island_focus,
             island::island_info,
             chat::chat_send,
             chat::chat_cancel,
             chat::chat_clear,
+            chat::chat_history,
+            chat::history_clear_all,
             chat::ai_test_connection,
             chat::secret_set,
             chat::secret_delete,
@@ -74,6 +79,8 @@ pub fn run() {
             files::folder_pick,
             files::workspace_files,
             convert::convert_to_pdf,
+            convert::conversions_recent,
+            convert::conversions_clear,
             pet::pet_open_island,
             pet::pet_hide,
         ])
@@ -90,15 +97,29 @@ fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     #[cfg(target_os = "macos")]
     app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
-    let settings_path = app.path().app_config_dir()?.join("settings.json");
-    let settings = Settings::load(&settings_path);
+    // Todo se guarda en una base de datos SQLite local. La primera vez se traen los ajustes
+    // del settings.json de las versiones anteriores (que se queda como copia).
+    let db = db::Db::open(&app.path().app_data_dir()?.join("tico.db"))?;
+    let settings = match db.load_settings() {
+        Some(saved) => saved.sanitized(),
+        None => {
+            let legacy = app.path().app_config_dir()?.join("settings.json");
+            let settings = Settings::load(&legacy);
+            if let Err(err) = db.save_settings(&settings) {
+                eprintln!("No se pudieron guardar los ajustes: {err}");
+            } else if legacy.exists() {
+                let _ = std::fs::rename(&legacy, legacy.with_extension("json.bak"));
+            }
+            settings
+        }
+    };
 
     #[cfg(target_os = "macos")]
     let notch_screens = platform::macos::notch_screens();
     #[cfg(not(target_os = "macos"))]
     let notch_screens = Vec::new();
 
-    app.manage(AppState::new(settings.clone(), settings_path, notch_screens));
+    app.manage(AppState::new(settings.clone(), db, notch_screens));
     let handle = app.handle().clone();
 
     if let Some(window) = app.get_webview_window(ISLAND_LABEL) {

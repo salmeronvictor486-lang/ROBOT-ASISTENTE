@@ -62,6 +62,8 @@ pub enum AppError {
     Convert(String),
     #[error("No encuentro ningún documento abierto")]
     NoDocument,
+    #[error("Base de datos: {0}")]
+    Database(String),
 }
 
 impl AppError {
@@ -95,6 +97,7 @@ impl AppError {
             AppError::File(_) => "file",
             AppError::Convert(_) => "convert",
             AppError::NoDocument => "noDocument",
+            AppError::Database(_) => "database",
         }
     }
 
@@ -118,7 +121,8 @@ impl AppError {
             | AppError::Capture(s)
             | AppError::Autostart(s)
             | AppError::File(s)
-            | AppError::Convert(s) => s.clone(),
+            | AppError::Convert(s)
+            | AppError::Database(s) => s.clone(),
             AppError::Network(e) => e.to_string(),
             AppError::Io(e) => e.to_string(),
             AppError::Json(e) => e.to_string(),

@@ -183,6 +183,28 @@ export interface Settings {
   activeWorkspace: string;
   /** Cambiar de espacio según la app que estés usando. */
   autoWorkspace: boolean;
+  /** Guardar las conversaciones en la base de datos local. */
+  saveHistory: boolean;
+}
+
+/** Un mensaje guardado en la base de datos (`StoredMessage` en Rust). */
+export interface StoredMessage {
+  id: number;
+  role: "user" | "assistant";
+  text: string;
+  files: FileInfo[];
+  /** Llevaba captura (la imagen nunca se guarda). */
+  capture: boolean;
+  createdAt: number;
+}
+
+/** Lo que guarda la base de datos (`DbInfo` en Rust). */
+export interface DbInfo {
+  path: string;
+  bytes: number;
+  messages: number;
+  conversations: number;
+  conversions: number;
 }
 
 /** El Tico de siempre (el primero de la lista). */
@@ -340,6 +362,7 @@ export const DEFAULT_SETTINGS: Settings = {
   workspaces: DEFAULT_WORKSPACES,
   activeWorkspace: "general",
   autoWorkspace: true,
+  saveHistory: true,
 };
 
 /** El Tico con ese id (o el primero). */

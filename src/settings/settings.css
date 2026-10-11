@@ -751,3 +751,16 @@ input[type="color"] {
     width: 100%;
   }
 }
+
+/* ---------- Datos ---------- */
+
+.db-stats {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: right;
+}
+
+.data-actions {
+  justify-content: flex-end;
+  padding-top: 6px;
+}

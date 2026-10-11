@@ -1,11 +1,10 @@
 //! Ajustes de Tico: se guardan como JSON en la carpeta de configuración del sistema.
 
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::AppResult;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -496,6 +495,8 @@ pub struct Settings {
     pub active_workspace: String,
     /// Cambiar de espacio según la app que estés usando al abrir la isla.
     pub auto_workspace: bool,
+    /// Guardar las conversaciones en la base de datos (si no, se olvidan al cerrar Tico).
+    pub save_history: bool,
     /// Colores de la versión 0.x (un solo Tico). Solo se leen para migrarlos.
     #[serde(rename = "robotBaseColor", skip_serializing)]
     pub legacy_base_color: Option<String>,
@@ -539,6 +540,7 @@ impl Default for Settings {
             workspaces: default_workspaces(&default_ticos()),
             active_workspace: "general".into(),
             auto_workspace: true,
+            save_history: true,
             legacy_base_color: None,
             legacy_accent_color: None,
         }
@@ -788,7 +790,8 @@ impl Settings {
         (provider, model)
     }
 
-    /// Lee los ajustes. Si el archivo no existe o está roto, usa los valores por defecto.
+    /// Lee un `settings.json` (versiones anteriores a la base de datos). Si no existe o está
+    /// roto, usa los valores por defecto.
     pub fn load(path: &Path) -> Self {
         let settings = match fs::read_to_string(path) {
             Ok(text) => serde_json::from_str::<Settings>(&text).unwrap_or_else(|err| {
@@ -798,17 +801,6 @@ impl Settings {
             Err(_) => Settings::default(),
         };
         settings.sanitized()
-    }
-
-    /// Guarda de forma atómica: escribe un temporal y lo renombra.
-    pub fn save(&self, path: &Path) -> AppResult<()> {
-        if let Some(dir) = path.parent() {
-            fs::create_dir_all(dir)?;
-        }
-        let tmp: PathBuf = path.with_extension("json.tmp");
-        fs::write(&tmp, serde_json::to_vec_pretty(self)?)?;
-        fs::rename(&tmp, path)?;
-        Ok(())
     }
 }
 
@@ -961,16 +953,15 @@ mod tests {
     }
 
     #[test]
-    fn save_and_load_roundtrip() {
+    fn legacy_json_file_is_read() {
         let dir = std::env::temp_dir().join(format!("tico-test-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
         let path = dir.join("settings.json");
-        let original = Settings {
-            island_position: IslandPosition::Right,
-            ..Settings::default()
-        }
-        .sanitized();
-        original.save(&path).unwrap();
-        assert_eq!(Settings::load(&path), original);
+        fs::write(&path, r#"{"islandPosition":"right","activeTico":"code"}"#).unwrap();
+        let s = Settings::load(&path);
+        assert_eq!(s.island_position, IslandPosition::Right);
+        assert_eq!(s.active_tico, "code");
+        assert_eq!(Settings::load(&dir.join("no-existe.json")), Settings::default().sanitized());
         let _ = fs::remove_dir_all(dir);
     }
 }

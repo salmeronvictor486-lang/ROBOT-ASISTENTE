@@ -1,5 +1,5 @@
-import { useCallback, useRef, useState } from "react";
-import { api, Channel, isTauri, toAppError } from "../lib/tauri";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { api, Channel, isTauri, onEvent, toAppError } from "../lib/tauri";
 import type { AppErrorPayload, ChatEvent, ConvertResult, FileInfo } from "../types";
 import { chatKey } from "../workspaces";
 
@@ -23,6 +23,8 @@ export interface UiMessage {
   text: string;
   /** Miniatura de la captura enviada con el mensaje (data URL). */
   thumbnail?: string;
+  /** Llevaba captura, pero viene de la base de datos (la imagen no se guarda). */
+  capture?: boolean;
   /** Archivos enviados con el mensaje. */
   files?: FileInfo[];
   error?: AppErrorPayload;
@@ -106,6 +108,53 @@ export function useChat(ticoId: string, workspaceId: string, lang: string): Chat
   const append = useCallback((tico: string, ...messages: UiMessage[]) => {
     setByTico((all) => ({ ...all, [tico]: [...(all[tico] ?? []), ...messages] }));
   }, []);
+
+  // Se han borrado todas las conversaciones desde Ajustes.
+  useEffect(
+    () =>
+      onEvent("chat://cleared", () => {
+        seq.current++;
+        setByTico({});
+        setPhase("idle");
+        setBusyTico(null);
+      }),
+    [],
+  );
+
+  // La primera vez que se abre una conversación, traemos lo guardado en la base de datos.
+  const loaded = useRef(new Set<string>());
+  useEffect(() => {
+    if (!isTauri() || loaded.current.has(current)) return;
+    loaded.current.add(current);
+    let alive = true;
+    let done = false;
+    api
+      .chatHistory(workspaceId, ticoId)
+      .then((saved) => {
+        if (!alive) return;
+        done = true;
+        if (saved.length === 0) return;
+        const restored: UiMessage[] = saved.map((m) => ({
+          id: nextId.current++,
+          role: m.role,
+          text: m.text,
+          ...(m.files.length ? { files: m.files } : {}),
+          ...(m.capture ? { capture: true } : {}),
+        }));
+        // Va delante de lo que se haya escrito mientras cargaba.
+        setByTico((all) => ({ ...all, [current]: [...restored, ...(all[current] ?? [])] }));
+      })
+      .catch((e: unknown) => {
+        console.error(e);
+        if (alive) loaded.current.delete(current);
+      });
+    const seen = loaded.current;
+    return () => {
+      alive = false;
+      // Si se cambia de conversación antes de que llegue, se volverá a pedir.
+      if (!done) seen.delete(current);
+    };
+  }, [current, ticoId, workspaceId]);
 
   const send = useCallback(
     async (text: string, extras: SendExtras = {}) => {
@@ -287,6 +336,7 @@ export function errorKey(error: AppErrorPayload) {
     case "file":
     case "convert":
     case "noDocument":
+    case "database":
       return `error.${error.kind}` as const;
     default:
       return "error.other" as const;

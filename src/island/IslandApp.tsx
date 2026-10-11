@@ -104,6 +104,19 @@ function Island({ settings }: { settings: Settings }) {
   /** El selector de archivos está abierto: la isla no se esconde mientras eliges. */
   const [picking, setPicking] = useState(false);
   const [recent, setRecent] = useState<{ id: number; task: PdfTask }[]>([]);
+  // Los PDF de otras veces vienen de la base de datos (con ids negativos: no chocan con el chat).
+  useEffect(() => {
+    if (!isTauri()) return;
+    api
+      .conversionsRecent()
+      .then((list) =>
+        setRecent((current) => [
+          ...current,
+          ...list.map((result, i) => ({ id: -1 - i, task: { status: "done" as const, source: result.source, result } })),
+        ].slice(0, 12)),
+      )
+      .catch(console.error);
+  }, []);
   const [emote, playEmote] = useEmote();
   const showError = useRecent(chat.errorAt, ERROR_MS);
 

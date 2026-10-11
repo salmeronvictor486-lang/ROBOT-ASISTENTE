@@ -74,6 +74,7 @@ export function ChatView({
           {chat.messages.map((m) => (
             <div key={m.id} className={`message message-${m.role}${m.task ? " message-task" : ""}`}>
               {m.thumbnail && <img className="message-thumb" src={m.thumbnail} alt="" />}
+              {!m.thumbnail && m.capture && <span className="capture-tag">{t("island.capturedBefore")}</span>}
               {m.files && m.files.length > 0 && (
                 <div className="message-files">
                   {m.files.map((f) => (

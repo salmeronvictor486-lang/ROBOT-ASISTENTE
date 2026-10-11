@@ -5,6 +5,7 @@ import { api, isTauri, onEvent, toAppError } from "../lib/tauri";
 import { Tico } from "../robot/Tico";
 import { DEFAULT_SETTINGS, findTico, type AppErrorPayload, type Settings } from "../types";
 import { CommitInput, Row, Section, Segmented, ShortcutInput, Slider, Toggle } from "./fields";
+import { DataSection } from "./DataSection";
 import { ProviderSection } from "./ProviderSection";
 import { TicosSection } from "./TicosSection";
 import { WorkspacesSection } from "./WorkspacesSection";
@@ -14,7 +15,7 @@ const SAVE_DELAY_MS = 400;
 
 type SaveState = { kind: "idle" } | { kind: "saving" } | { kind: "saved" } | { kind: "error"; error: AppErrorPayload };
 
-const SECTIONS = ["ticos", "workspaces", "ai", "island", "appearance", "screen", "files", "shortcuts", "system"] as const;
+const SECTIONS = ["ticos", "workspaces", "ai", "island", "appearance", "screen", "files", "shortcuts", "data", "system"] as const;
 type SectionId = (typeof SECTIONS)[number];
 
 declare global {
@@ -282,6 +283,8 @@ function SettingsPage({
             <ShortcutInput value={settings.shortcutCapture} onChange={(shortcutCapture) => update({ shortcutCapture })} />
           </Row>
         </Section>
+
+        <DataSection settings={settings} update={update} />
 
         <Section id="system" title={t("settings.section.system")}>
           <Row label={t("settings.sounds")}>

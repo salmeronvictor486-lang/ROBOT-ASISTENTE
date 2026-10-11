@@ -462,7 +462,8 @@ fn convert_active(app: &AppHandle) -> AppResult<ConvertResult> {
 /// Pasa a PDF el archivo `path`, o (sin `path`) el documento abierto en Word/Pages.
 #[tauri::command]
 pub async fn convert_to_pdf(app: AppHandle, path: Option<String>) -> AppResult<ConvertResult> {
-    tauri::async_runtime::spawn_blocking(move || match path {
+    let handle = app.clone();
+    let result = tauri::async_runtime::spawn_blocking(move || match path {
         Some(path) => {
             let input = PathBuf::from(&path);
             let stem = input.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
@@ -474,7 +475,24 @@ pub async fn convert_to_pdf(app: AppHandle, path: Option<String>) -> AppResult<C
         None => convert_active(&app),
     })
     .await
-    .map_err(|e| AppError::Convert(e.to_string()))?
+    .map_err(|e| AppError::Convert(e.to_string()))??;
+    // Al historial de PDF (sale en la pestaña Archivos aunque cierres Tico).
+    if let Err(err) = handle.state::<AppState>().db.add_conversion(&result) {
+        eprintln!("No se pudo guardar el PDF en el historial: {err}");
+    }
+    Ok(result)
+}
+
+/// Los últimos PDF convertidos.
+#[tauri::command]
+pub fn conversions_recent(state: tauri::State<'_, AppState>) -> AppResult<Vec<ConvertResult>> {
+    state.db.conversions(30)
+}
+
+/// Vacía el historial de PDF (los archivos no se tocan).
+#[tauri::command]
+pub fn conversions_clear(state: tauri::State<'_, AppState>) -> AppResult<()> {
+    state.db.clear_conversions()
 }
 
 #[cfg(test)]

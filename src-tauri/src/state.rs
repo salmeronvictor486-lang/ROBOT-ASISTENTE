@@ -1,18 +1,20 @@
 use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::atomic::AtomicU64;
 use std::sync::Mutex;
 use std::time::Duration;
 
 use crate::ai::ChatMessage;
 use crate::capture::PendingCapture;
+use crate::db::Db;
+use crate::error::AppResult;
 use crate::island::{IslandShared, NotchScreen};
 use crate::settings::Settings;
 
 /// Estado global de la app, accesible desde comandos y hilos con `app.state::<AppState>()`.
 pub struct AppState {
     pub settings: Mutex<Settings>,
-    pub settings_path: PathBuf,
+    /// Base de datos local (ajustes, conversaciones y PDF convertidos).
+    pub db: Db,
     pub island: Mutex<IslandShared>,
     /// Pantallas con notch (solo MacBook), detectadas al arrancar.
     pub notch_screens: Vec<NotchScreen>,
@@ -29,10 +31,10 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(settings: Settings, settings_path: PathBuf, notch_screens: Vec<NotchScreen>) -> Self {
+    pub fn new(settings: Settings, db: Db, notch_screens: Vec<NotchScreen>) -> Self {
         Self {
             settings: Mutex::new(settings),
-            settings_path,
+            db,
             island: Mutex::new(IslandShared::default()),
             notch_screens,
             chat: Mutex::new(HashMap::new()),
@@ -47,5 +49,12 @@ impl AppState {
                 .build()
                 .unwrap_or_default(),
         }
+    }
+}
+
+impl AppState {
+    /// Guarda los ajustes en la base de datos.
+    pub fn save_settings(&self, settings: &Settings) -> AppResult<()> {
+        self.db.save_settings(settings)
     }
 }

@@ -3,7 +3,7 @@
 //! Tico desaparece.
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
@@ -14,13 +14,20 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::ai::models::{resolve_model, resolve_ollama_model};
 use crate::ai::router::{self, AnyProvider};
-use crate::ai::{alternating, system_prompt, workspace_prompt, ChatMessage, ChatRequest, ImageData, Provider};
+use crate::ai::{alternating, system_prompt, workspace_prompt, ChatMessage, ChatRequest, ImageData, Provider, Role};
+use crate::db::StoredMessage;
 use crate::error::{AppError, AppResult};
 use crate::files;
 use crate::island::lock;
 use crate::secrets;
 use crate::settings::{ProviderKind, Settings};
 use crate::state::AppState;
+
+/// Mensajes guardados que se recuperan al volver a una conversación.
+const HISTORY_LOADED: usize = 60;
+/// Mensajes que se mandan a la IA como mucho (los más recientes): así una conversación
+/// larga no se come los tokens.
+const HISTORY_SENT: usize = 30;
 
 /// Esperas entre reintentos cuando el servicio está saturado o hay un corte.
 const RETRY_DELAYS: [Duration; 2] = [Duration::from_millis(1200), Duration::from_millis(3500)];
@@ -77,7 +84,7 @@ fn remember_model(app: &AppHandle, tico_id: &str, provider: ProviderKind, model:
         }
         settings.clone()
     };
-    if let Err(err) = updated.save(&state.settings_path) {
+    if let Err(err) = state.save_settings(&updated) {
         eprintln!("No se pudo guardar el modelo nuevo: {err}");
     }
     let _ = app.emit("settings://changed", &updated);
@@ -188,8 +195,10 @@ pub async fn chat_send(
     // Captura de pantalla (y el texto leído de ella).
     let mut images: Vec<Arc<ImageData>> = Vec::new();
     let mut context = String::new();
+    let mut had_capture = false;
     if options.attach_capture {
         if let Some(capture) = lock(&state.pending_capture).take() {
+            had_capture = true;
             images.push(Arc::new(capture.image));
             if let Some(text) = capture.text {
                 context.push_str(&format!("[Text read from the screen with OCR]\n{text}\n"));
@@ -219,13 +228,38 @@ pub async fn chat_send(
     if cancelled() {
         return Ok(());
     }
+    // Primera vez que se habla con este Tico en este espacio desde que se abrió Tico:
+    // recuperamos lo guardado en la base de datos (solo el texto).
+    let saved: Vec<ChatMessage> = if settings.save_history && !lock(&state.chat).contains_key(&key) {
+        state
+            .db
+            .history(&workspace.id, &tico.id, HISTORY_LOADED)
+            .unwrap_or_default()
+            .into_iter()
+            .map(|m| {
+                if m.role == "user" {
+                    ChatMessage::user(m.text, String::new(), Vec::new())
+                } else {
+                    ChatMessage::assistant(m.text)
+                }
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
     let question = ChatMessage::user(options.text.clone(), context, images);
     let my_id = question.id;
     let messages = {
         let mut chats = lock(&state.chat);
-        let history = chats.entry(key.clone()).or_default();
+        let history = chats.entry(key.clone()).or_insert(saved);
         history.push(question);
-        alternating(history)
+        let start = history.len().saturating_sub(HISTORY_SENT);
+        let mut messages = alternating(&history[start..]);
+        // La conversación tiene que empezar por el usuario.
+        while messages.first().is_some_and(|m| m.role != Role::User) {
+            messages.remove(0);
+        }
+        messages
     };
     // Lo que sabe del espacio: su contexto y los archivos más recientes de su carpeta.
     let folder_files = if workspace.folder.is_empty() {
@@ -293,8 +327,18 @@ pub async fn chat_send(
                 history.remove(pos);
             } else {
                 // Aunque se haya cancelado, lo recibido se queda (justo detrás de la pregunta).
-                history.insert(pos + 1, ChatMessage::assistant(answer));
+                history.insert(pos + 1, ChatMessage::assistant(answer.clone()));
             }
+        }
+    }
+    // Y a la base de datos: la pregunta con su respuesta (sin capturas ni su texto).
+    if settings.save_history && !answer.is_empty() {
+        let attached: Vec<files::FileInfo> = options.files.iter().filter_map(|p| files::info(Path::new(p))).collect();
+        let attached = serde_json::to_value(attached).unwrap_or_else(|_| serde_json::json!([]));
+        if let Err(err) =
+            state.db.add_exchange(&workspace.id, &tico.id, &options.text, &attached, had_capture, &answer)
+        {
+            eprintln!("No se pudo guardar la conversación: {err}");
         }
     }
     result?;
@@ -321,10 +365,33 @@ pub fn chat_clear(state: State<'_, AppState>, tico: Option<String>, workspace: O
         Some(id) => {
             let workspace = workspace.unwrap_or_else(|| lock(&state.settings).active_workspace.clone());
             lock(&state.chat).remove(&chat_key(&workspace, &id));
+            if let Err(err) = state.db.clear_chat(&workspace, &id) {
+                eprintln!("No se pudo borrar la conversación guardada: {err}");
+            }
         }
         None => lock(&state.chat).clear(),
     }
     lock(&state.pending_capture).take();
+}
+
+/// La conversación guardada de un Tico en un espacio (para enseñarla al volver).
+#[tauri::command]
+pub fn chat_history(state: State<'_, AppState>, workspace: String, tico: String) -> AppResult<Vec<StoredMessage>> {
+    if !lock(&state.settings).save_history {
+        return Ok(Vec::new());
+    }
+    state.db.history(&workspace, &tico, HISTORY_LOADED)
+}
+
+/// Borra todas las conversaciones, en memoria y en la base de datos.
+#[tauri::command]
+pub fn history_clear_all(app: AppHandle, state: State<'_, AppState>) -> AppResult<()> {
+    state.chat_generation.fetch_add(1, Ordering::SeqCst);
+    lock(&state.chat).clear();
+    state.db.clear_all_chats()?;
+    // La isla vacía también lo que está enseñando.
+    let _ = app.emit("chat://cleared", ());
+    Ok(())
 }
 
 /// "Probar conexión": lista los modelos disponibles con la clave guardada.

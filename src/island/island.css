@@ -763,6 +763,16 @@ textarea:focus-visible {
   margin-bottom: 6px;
 }
 
+.capture-tag {
+  display: inline-block;
+  margin-bottom: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
 .message-files {
   display: flex;
   flex-wrap: wrap;

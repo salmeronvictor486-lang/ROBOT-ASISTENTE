@@ -5,12 +5,14 @@ import type {
   CapturePreview,
   ChatEvent,
   ConvertResult,
+  DbInfo,
   FileInfo,
   IslandInfo,
   ProviderKind,
   Rect,
   SendOptions,
   Settings,
+  StoredMessage,
 } from "../types";
 
 /** `true` dentro de la app; `false` si abres Vite en un navegador normal. */
@@ -29,6 +31,12 @@ export const api = {
     invoke<undefined>("chat_send", { options, onEvent }),
   chatCancel: () => invoke<undefined>("chat_cancel"),
   chatClear: (tico?: string, workspace?: string) => invoke<undefined>("chat_clear", { tico, workspace }),
+  chatHistory: (workspace: string, tico: string) => invoke<StoredMessage[]>("chat_history", { workspace, tico }),
+  historyClearAll: () => invoke<undefined>("history_clear_all"),
+  conversionsRecent: () => invoke<ConvertResult[]>("conversions_recent"),
+  conversionsClear: () => invoke<undefined>("conversions_clear"),
+  dbInfo: () => invoke<DbInfo>("db_info"),
+  dbBackup: () => invoke<string>("db_backup"),
   aiTestConnection: (provider: ProviderKind) => invoke<string[]>("ai_test_connection", { provider }),
   secretSet: (provider: ProviderKind, key: string) => invoke<undefined>("secret_set", { provider, key }),
   secretDelete: (provider: ProviderKind) => invoke<undefined>("secret_delete", { provider }),

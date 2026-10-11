@@ -61,7 +61,7 @@ fn remember(app: &AppHandle, position: PhysicalPosition<i32>) {
         SAVE_SCHEDULED.store(false, Ordering::SeqCst);
         let state = app.state::<AppState>();
         let settings = lock(&state.settings).clone();
-        if let Err(err) = settings.save(&state.settings_path) {
+        if let Err(err) = state.save_settings(&settings) {
             eprintln!("No se pudo guardar dónde está Tico: {err}");
         }
     });

@@ -55,7 +55,7 @@ pub fn auto_switch(app: &AppHandle) {
                 return;
             }
             settings.switch_workspace(&target.id);
-            if let Err(err) = settings.save(&state.settings_path) {
+            if let Err(err) = state.save_settings(&settings) {
                 eprintln!("No se pudo guardar el espacio: {err}");
             }
             (settings.clone(), target)
