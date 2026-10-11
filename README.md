@@ -16,6 +16,15 @@ chatea contigo y, solo cuando tú se lo pides, mira tu pantalla para ayudarte.
 
 **Versión 1.1**
 
+- **Bienvenida en un minuto**: la primera vez, Tico te guía para elegir IA (las gratis,
+  destacadas), pegar y probar la clave y aprender a llamarlo.
+- **Chat como en las grandes apps**: escribe `/` y sale una paleta de comandos (mirar la
+  pantalla, pasar a PDF, traducir, mejorar un texto, hablar con otro Tico, cambiar de
+  espacio…); con el chat vacío te propone ideas según el Tico; si algo falla tienes
+  **Reintentar** y un botón directo a la solución (añadir clave, elegir modelo…), y
+  **Otra respuesta** para regenerar la última.
+- **Avisa de versiones nuevas** (se puede apagar): solo pregunta a GitHub el número de la
+  última versión.
 - **La isla**: aparece al dejar el ratón en el borde superior (zona central), crece al
   pasar por encima y se abre al hacer clic. Tiene tres pestañas: **Inicio** (Tico, atajos
   rápidos y tus Ticos), **Chat** y **Archivos**. Fuera de la cápsula, los clics pasan a las

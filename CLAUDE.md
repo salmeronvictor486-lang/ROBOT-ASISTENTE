@@ -53,7 +53,7 @@ Lo que solo se puede verificar en un equipo real (CI solo compila y pasa tests):
 
 ## Arquitectura
 ```
-index.html / settings.html / playground.html / pet.html   Una página por ventana (Vite multipágina)
+index.html / settings.html / playground.html / pet.html / welcome.html   Una página por ventana
 src/
   entries/           Punto de entrada de cada ventana
   island/            La isla: máquina de estados, cápsula, pestañas, chat, archivos
@@ -63,6 +63,7 @@ src/
     Header/HomeView/ChatView/FilesView  Cabecera con pestañas y las tres vistas
     ModelPicker.tsx  Chip para cambiar de IA y de modelo desde el chat
     intents.ts       "Pásame este Word a PDF" / "¿qué ves en mi pantalla?" (con tests)
+    commands.ts      Paleta "/" del chat: buscar comandos sin tildes (con tests)
     useChat.ts       Conversación por Tico, streaming por Channel, tareas de PDF
   robot/             Tico: Tico.tsx (SVG + bucle rAF), expressions.ts (15 poses), outfits.tsx
                      (ropa), rig.ts (brazos), gaze.ts, Playground
@@ -70,6 +71,7 @@ src/
   pet/               Tico en el escritorio (ventana transparente aparte)
   lib/               spring.ts (muelle propio), tauri.ts (API tipada), sound.ts (Web Audio)
   workspaces.ts      Espacios: cambiar de espacio o de Tico, espacio nuevo (con tests)
+  welcome/           Bienvenida de primer uso (welcome.html): idioma, IA, clave, cómo llamarlo
   i18n/              es.json (referencia), ca.json, en.json
 src-tauri/src/
   lib.rs             Arranque, plugins y registro de comandos
@@ -89,6 +91,7 @@ src-tauri/src/
   tray.rs            Menú de la bandeja/barra de menús traducido (con "Tico en el escritorio")
   pet.rs             Ventana de Tico en el escritorio: crearla, quitarla y recordar dónde está
   workspace.rs       Cambiar solo al espacio de la app que estás usando al abrir la isla
+  updates.rs         ¿Hay versión nueva? (última Release de GitHub, comparación semver)
   platform/macos.rs  NSPanel no activable por encima de la barra de menús y pantallas con notch
 .github/workflows/   ci.yml (comprobaciones) y release.yml (instaladores)
 ```
@@ -210,6 +213,14 @@ src-tauri/src/
     conversación se cargan los 60 últimos mensajes y a la IA se le mandan como mucho los 30
     últimos. Una pregunta se guarda junto a su respuesta (en una transacción) y solo si hubo
     respuesta. Si el archivo está roto se aparta (`tico.db.broken-…`) y se crea otro.
+37. **Experiencia pulida (1.1)**: bienvenida de primer uso en su propia ventana (`onboarded`
+    se marca al abrirla, así sale una sola vez; quien viene de un `settings.json` no la ve).
+    Chat con paleta "/" (comandos como objetos literales: el lint de React Compiler no deja
+    pasar a otra función, durante el render, cierres que tocan refs), sugerencias por Tico,
+    "Reintentar" y botón a Ajustes → IA en los errores, y "Otra respuesta"
+    (`chat_forget_last` quita la última pareja de memoria y de la base de datos). Aviso de
+    versión nueva consultando la API pública de GitHub (`check_updates`, se puede apagar;
+    descartar una versión se recuerda en `localStorage`).
 
 ## Anuncio (`promo/`)
 `promo.html` + `src/promo/` dibujan el anuncio de 35 s con los componentes reales (Tico,
