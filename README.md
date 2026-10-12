@@ -8,9 +8,9 @@ chatea contigo y, solo cuando tú se lo pides, mira tu pantalla para ayudarte.
 
 ## Anuncio
 
-<p align="center"><a href="promo/tico-anuncio.mp4"><img src="promo/tico-poster.jpg" alt="Ver el anuncio de Tico (35 s)" width="720"></a></p>
+<p align="center"><a href="promo/tico-anuncio.mp4"><img src="promo/tico-anuncio.gif" alt="Anuncio de Tico (35 s): la isla baja del notch, responde, mira la pantalla y cambia de expresión" width="720"></a></p>
 
-<p align="center"><a href="promo/tico-anuncio.mp4">▶ Ver el anuncio (35 s)</a> · <a href="promo/BRIEF.md">Brief y guion</a></p>
+<p align="center">Se reproduce solo y en bucle, sin sonido. <a href="promo/tico-anuncio.mp4">▶ Con sonido (MP4, 35 s)</a> · <a href="promo/BRIEF.md">Brief y guion</a></p>
 
 ## Qué hace
 

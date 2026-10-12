@@ -247,6 +247,11 @@ fotograma a fotograma a 60 fps con el tiempo virtual de Chrome (BeginFrame) y
 (necesita `npm run dev` arrancado, ffmpeg y numpy). En el render, las animaciones CSS no
 avanzan: dentro de `.promo` están desactivadas y todo se anima desde la línea de tiempo.
 Los bucles de animación usan `performance.now()` (no el argumento de rAF) por lo mismo.
+En el README se ve `promo/tico-anuncio.gif` (720 px, 15 fps, 128 colores, ~5 MB), que GitHub
+reproduce solo; un `.mp4` del repositorio solo se descarga. Para un reproductor con sonido
+dentro del README hay que subir el MP4 arrastrándolo al editor web de GitHub (da una URL
+`github.com/user-attachments/assets/…` que se pega sola en una línea). Para regenerar el GIF:
+`ffmpeg -i promo/tico-anuncio.mp4 -vf "fps=15,scale=720:-1:flags=lanczos,split[a][b];[a]palettegen=max_colors=128:stats_mode=diff[p];[b][p]paletteuse=dither=bayer:bayer_scale=4:diff_mode=rectangle" -loop 0 promo/tico-anuncio.gif`.
 
 ## Licencias
 Código: MIT (`LICENSE`). Tico, su nombre, su diseño y sus sonidos: todos los derechos
