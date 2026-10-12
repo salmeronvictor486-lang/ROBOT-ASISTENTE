@@ -48,8 +48,14 @@ chatea contigo y, solo cuando tú se lo pides, mira tu pantalla para ayudarte.
   sistema (gratis y sin internet), así entiende hasta la letra pequeña y funciona incluso con
   modelos que no ven imágenes. No captura nada si hay a la vista un gestor de contraseñas o
   la web de un banco, y la imagen nunca se guarda en disco.
-- **Suelta archivos en la isla**: Tico los recoge con una caja y te pregunta qué hacer:
-  pasar a PDF, resumir, traducir o preguntar. Lee Word, PDF, Excel, PowerPoint, texto,
+- **Suelta archivos en la isla**: Tico los recoge con una caja y te propone qué hacer:
+  **enviarlos por correo**, **moverlos a una carpeta** (las de tus espacios, a un clic),
+  pasar a PDF, resumir, traducir o preguntar.
+- **Envía archivos por correo sin salir de Tico**: se abre una ventanita con Para, Asunto y
+  Mensaje ya rellenos y el archivo adjunto. Conecta tu cuenta en **Ajustes → Correo** (Gmail,
+  iCloud, Outlook, Yahoo… se configuran solos; usa una *contraseña de aplicación*) y Tico lo
+  envía él solo. Sin conectarla, el borrador se abre en Outlook, Thunderbird o Mail con el
+  adjunto puesto. También vale decir «envíalo por correo a ana@ejemplo.com». Lee Word, PDF, Excel, PowerPoint, texto,
   código e imágenes.
 - **Todas las IA**: Claude, OpenAI, Gemini, OpenRouter, Groq, Mistral, DeepSeek, Grok,
   Ollama y LM Studio (en tu ordenador, gratis), cualquier servicio compatible con OpenAI y un

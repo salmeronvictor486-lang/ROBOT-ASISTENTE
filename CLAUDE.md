@@ -39,6 +39,8 @@ Lo que solo se puede verificar en un equipo real (CI solo compila y pasa tests):
 - Soltar archivos sobre la isla (eventos nativos de Tauri) y el OCR de Windows/macOS.
 - Pasar a PDF con Word (PowerShell + COM) en Windows y con Pages (AppleScript) en Mac.
 - Que el cambio de espacio por app (`workspace.rs`, ventana activa con `xcap`) acierte.
+- Enviar un correo real con Gmail (contraseña de aplicación) y abrir el borrador en Outlook
+  (COM) en Windows y en Mail (AppleScript) en macOS.
 
 ## Stack
 - Tauri 2 (Rust) + Vite 8 + React 19 + TypeScript 6 (estricto).
@@ -49,6 +51,7 @@ Lo que solo se puede verificar en un equipo real (CI solo compila y pasa tests):
   `pdf-extract` (leer PDF), `pdf-writer` + `ttf-parser` + `subsetter` (motor de PDF propio).
   OCR: `windows` (Windows.Media.Ocr) y `objc2-vision` (macOS).
   Base de datos: `rusqlite` con `bundled` (SQLite compilado dentro: nada que instalar).
+  Correo: `lettre` (SMTP con rustls + ring, sin OpenSSL).
 - Tests: Vitest (frontend) y `cargo test` (Rust). Lint: ESLint + Clippy.
 
 ## Arquitectura
@@ -65,6 +68,8 @@ src/
     intents.ts       "Pásame este Word a PDF" / "¿qué ves en mi pantalla?" (con tests)
     commands.ts      Paleta "/" del chat: buscar comandos sin tildes (con tests)
     useChat.ts       Conversación por Tico, streaming por Channel, tareas de PDF
+    useDroppedFiles.ts  Archivos soltados que esperan en la isla (añadir, quitar, mover)
+    MailSheet.tsx    Ventanita de correo dentro de la isla (Para, Asunto, Mensaje, adjuntos)
   robot/             Tico: Tico.tsx (SVG + bucle rAF), expressions.ts (15 poses), outfits.tsx
                      (ropa), rig.ts (brazos), gaze.ts, Playground
   settings/          Ventana de ajustes con menú lateral, editor de Ticos, espacios y proveedores
@@ -92,6 +97,8 @@ src-tauri/src/
   pet.rs             Ventana de Tico en el escritorio: crearla, quitarla y recordar dónde está
   workspace.rs       Cambiar solo al espacio de la app que estás usando al abrir la isla
   updates.rs         ¿Hay versión nueva? (última Release de GitHub, comparación semver)
+  mail.rs            Enviar archivos por correo: SMTP con tu cuenta (lettre) o borrador en
+                     Outlook/Thunderbird/Mail; servidores de Gmail, iCloud… por dominio
   platform/macos.rs  NSPanel no activable por encima de la barra de menús y pantallas con notch
 .github/workflows/   ci.yml (comprobaciones) y release.yml (instaladores)
 ```
@@ -221,6 +228,16 @@ src-tauri/src/
     (`chat_forget_last` quita la última pareja de memoria y de la base de datos). Aviso de
     versión nueva consultando la API pública de GitHub (`check_updates`, se puede apagar;
     descartar una versión se recuerda en `localStorage`).
+38. **Mover y enviar por correo (1.1)**: al soltar archivos, la isla propone "Enviar por correo"
+    y "Mover a…" (carpetas de los espacios o elegir otra; nunca pisa: "x (2).pdf"; entre discos
+    copia y borra). El correo sale por SMTP con la cuenta del usuario (`Settings.mail`, la
+    contraseña de aplicación en el llavero como `mail`); el servidor se deduce del dominio
+    (`mail::preset_for`) salvo que se escriba a mano. Sin cuenta, `mail_open_app` abre el
+    borrador en Outlook (COM), Thunderbird (`-compose`) o Mail (AppleScript) con los adjuntos;
+    si no hay ninguno, `mailto:` y enseña el archivo para arrastrarlo. Límite de 24 MB. Las
+    direcciones usadas se guardan en la tabla `contacts` (esquema v2) para sugerirlas.
+    Los archivos soltados viven en `useDroppedFiles`: con `setFiles` dentro de `IslandApp`, el
+    React Compiler dejaba de reconocer el setter tras añadir más actualizaciones asíncronas.
 
 ## Anuncio (`promo/`)
 `promo.html` + `src/promo/` dibujan el anuncio de 35 s con los componentes reales (Tico,
