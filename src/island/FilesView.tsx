@@ -21,6 +21,11 @@ interface Props {
   /** Carpeta del espacio de trabajo ("" si no tiene). */
   folder: string;
   onAddFiles: (files: FileInfo[]) => void;
+  /** Carpetas de los espacios, para mover ahí con un clic. */
+  destinations: { name: string; icon: string; path: string }[];
+  /** Mover a `dir` (o a la carpeta que se elija si no se da). */
+  onMove: (files: FileInfo[], dir?: string) => void;
+  onMail: (files: FileInfo[]) => void;
 }
 
 /** Archivos de la carpeta del espacio (se vuelven a leer al cambiar de carpeta). */
@@ -41,9 +46,25 @@ function useFolderFiles(folder: string): { files: FileInfo[]; failed: boolean } 
 }
 
 /** Pestaña de archivos: zona para soltar, qué hacer con lo soltado y los PDF de hoy. */
-export function FilesView({ tico, files, recent, dragging, onPick, onRemove, onPdf, onPrompt, onAsk, folder, onAddFiles }: Props) {
+export function FilesView({
+  tico,
+  files,
+  recent,
+  dragging,
+  onPick,
+  onRemove,
+  onPdf,
+  onPrompt,
+  onAsk,
+  folder,
+  onAddFiles,
+  destinations,
+  onMove,
+  onMail,
+}: Props) {
   const t = useT();
   const inFolder = useFolderFiles(folder);
+  const [moving, setMoving] = useState(false);
   const stop = (fn: () => void) => (e: React.MouseEvent) => {
     e.stopPropagation();
     fn();
@@ -88,6 +109,49 @@ export function FilesView({ tico, files, recent, dragging, onPick, onRemove, onP
                   </button>
                 </div>
               ))}
+            </div>
+            <div className="action-row suggest-row">
+              <button type="button" className="pill-button suggest" onClick={stop(() => onMail(files))}>
+                ✉️ {t("island.action.mail")}
+              </button>
+              <div className="move-wrap">
+                <button
+                  type="button"
+                  className={`pill-button suggest${moving ? " is-open" : ""}`}
+                  aria-expanded={moving}
+                  onClick={stop(() => (destinations.length ? setMoving((m) => !m) : onMove(files)))}
+                >
+                  📁 {t("island.action.move")}
+                </button>
+                {moving && (
+                  <div className="move-menu" role="menu">
+                    {destinations.map((d) => (
+                      <button
+                        key={d.path}
+                        type="button"
+                        role="menuitem"
+                        title={d.path}
+                        onClick={stop(() => {
+                          setMoving(false);
+                          onMove(files, d.path);
+                        })}
+                      >
+                        <span>{d.icon}</span> {d.name}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={stop(() => {
+                        setMoving(false);
+                        onMove(files);
+                      })}
+                    >
+                      <span>…</span> {t("island.action.moveOther")}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
             <div className="action-row">
               {convertible.length > 0 && (

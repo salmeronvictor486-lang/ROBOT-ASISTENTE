@@ -1808,3 +1808,241 @@ textarea:focus-visible {
   color: #f2f0eb;
   background: #1c1e22;
 }
+
+/* ---------- Sugerencias al soltar un archivo ---------- */
+
+.pill-button.suggest {
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  background: color-mix(in srgb, var(--accent) 12%, #0c0d0f);
+  color: #f2f0eb;
+  font-weight: 600;
+}
+
+.pill-button.suggest:hover,
+.pill-button.suggest.is-open {
+  border-color: var(--accent);
+}
+
+.move-wrap {
+  display: contents;
+}
+
+.move-menu {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  flex-basis: 100%;
+  animation: pop-in 200ms both cubic-bezier(0.2, 0.9, 0.3, 1.2);
+}
+
+.move-menu button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #15161a;
+  color: #e6e3dc;
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.move-menu button:hover {
+  border-color: var(--accent);
+}
+
+/* ---------- Correo ---------- */
+
+.mail-sheet {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 0;
+  padding: 10px 12px;
+  border-radius: 22px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  animation: sheet-up 320ms both cubic-bezier(0.2, 0.9, 0.3, 1.1);
+}
+
+.mail-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mail-head h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+}
+
+.mail-icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--accent) 18%, #0c0d0f);
+  font-size: 13px;
+}
+
+.mail-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 10px;
+  border-radius: 10px;
+  background: #0f1012;
+  border: 1px solid var(--line);
+}
+
+.mail-field:focus-within,
+.mail-body:focus {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.mail-field span {
+  width: 52px;
+  flex: none;
+  color: var(--muted);
+  font-size: 11.5px;
+}
+
+.mail-field input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 0;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: #f2f0eb;
+  font: inherit;
+  font-size: 12.5px;
+}
+
+.mail-body {
+  flex: 1;
+  min-height: 46px;
+  resize: none;
+  padding: 7px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  outline: none;
+  background: #0f1012;
+  color: #f2f0eb;
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.mail-files {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+}
+
+.mail-files small {
+  color: var(--muted);
+  font-size: 10.5px;
+  flex: none;
+}
+
+.mail-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 9px;
+  border: 1px dashed #4a4844;
+  border-radius: 10px;
+  background: transparent;
+  color: #b9b5ad;
+  font: inherit;
+  font-size: 11.5px;
+  cursor: pointer;
+}
+
+.mail-add svg {
+  width: 12px;
+  height: 12px;
+}
+
+.mail-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mail-note {
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.mail-error {
+  color: #ff9f8a;
+}
+
+.mail-from {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
+}
+
+.link-inline {
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.send-mail {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent) !important;
+  color: #06201f !important;
+}
+
+.send-mail svg {
+  width: 14px;
+  height: 14px;
+}
+
+.mini-spinner {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgba(6, 32, 31, 0.3);
+  border-top-color: #06201f;
+  animation: spin 700ms linear infinite;
+}
+
+@keyframes sheet-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.98);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mail-sheet,
+  .move-menu {
+    animation: none !important;
+  }
+}

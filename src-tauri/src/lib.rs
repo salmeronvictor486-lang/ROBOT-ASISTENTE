@@ -7,6 +7,7 @@ mod db;
 mod error;
 mod files;
 mod island;
+mod mail;
 mod ocr;
 mod pet;
 mod platform;
@@ -82,6 +83,14 @@ pub fn run() {
             files::file_thumbnail,
             files::folder_pick,
             files::workspace_files,
+            files::files_move,
+            mail::mail_status,
+            mail::mail_set_password,
+            mail::mail_delete_password,
+            mail::mail_test,
+            mail::mail_send,
+            mail::mail_contacts,
+            mail::mail_open_app,
             convert::convert_to_pdf,
             convert::conversions_recent,
             convert::conversions_clear,

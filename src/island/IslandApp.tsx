@@ -9,7 +9,7 @@ import { Tico } from "../robot/Tico";
 import { useTripleClick } from "../robot/useTripleClick";
 import { useSettings } from "../settings/useSettings";
 import { findTico, type UpdateInfo, type CapturePreview, type FileInfo, type IslandInfo, type NotchInfo, type Settings } from "../types";
-import { activeWorkspace, pickTico as withTico, switchWorkspace, workspaceTicos } from "../workspaces";
+import { activeWorkspace, folderName, pickTico as withTico, switchWorkspace, workspaceTicos } from "../workspaces";
 import { ActivityIndicator } from "./ActivityIndicator";
 import { CaptureAttachment } from "./CaptureAttachment";
 import { Capsule } from "./Capsule";
@@ -19,7 +19,9 @@ import { Header, type Tab } from "./Header";
 import { HomeView } from "./HomeView";
 import type { Command } from "./commands";
 import type { Suggestion } from "./ChatView";
-import { wantsPdf, wantsScreen } from "./intents";
+import { emailsIn, wantsMail, wantsPdf, wantsScreen } from "./intents";
+import { MailSheet } from "./MailSheet";
+import { useDroppedFiles } from "./useDroppedFiles";
 import { initialIsland, islandReducer, shouldAutoHide } from "./machine";
 import { ModelPicker } from "./ModelPicker";
 import { capsuleGeometry, capsuleHitRect, capsuleX, TOP_GAP } from "./sizes";
@@ -127,9 +129,18 @@ function Island({ settings }: { settings: Settings }) {
 
   /** Aviso corto cuando Tico cambia de espacio solo ("Espacio: Programar"). */
   const [wsNotice, setWsNotice] = useState<string | null>(null);
+  /** Correo que se está escribiendo (con sus adjuntos), o `null`. */
+  const [compose, setCompose] = useState<{ files: FileInfo[]; to?: string } | null>(null);
+  /** Aviso corto tras una acción ("✉️ Enviado a ana@…", "📁 Movido a Clase"). */
+  const [flash, setFlash] = useState<string | null>(null);
+  useEffect(() => {
+    if (flash === null) return;
+    const id = window.setTimeout(() => setFlash(null), 3500);
+    return () => window.clearTimeout(id);
+  }, [flash]);
   const [capturing, setCapturing] = useState(false);
   const [pendingCapture, setPendingCapture] = useState<CapturePreview | null>(null);
-  const [files, setFiles] = useState<FileInfo[]>([]);
+  const { files, add: addDropped, remove: removeDropped, clear: clearDropped, replace: replaceDropped } = useDroppedFiles();
   const [dragging, setDragging] = useState(false);
   const [converting, setConverting] = useState(0);
   /** El selector de archivos está abierto: la isla no se esconde mientras eliges. */
@@ -221,15 +232,12 @@ function Island({ settings }: { settings: Settings }) {
   const addFiles = useCallback(
     (list: FileInfo[]) => {
       if (list.length === 0) return;
-      setFiles((current) => {
-        const known = new Set(current.map((f) => f.path));
-        return [...current, ...list.filter((f) => !known.has(f.path))];
-      });
+      addDropped(list);
       setTab("files");
       sound("drop");
       playEmote("happy", 1200);
     },
-    [playEmote, sound],
+    [addDropped, playEmote, sound],
   );
 
   // Soltar archivos sobre la isla (eventos nativos de Tauri: traen las rutas).
@@ -273,7 +281,7 @@ function Island({ settings }: { settings: Settings }) {
     }
   }, [addFiles, chat, workspace.folder]);
 
-  const removeFile = useCallback((path: string) => setFiles((list) => list.filter((f) => f.path !== path)), []);
+  const removeFile = useCallback((path: string) => removeDropped([path]), [removeDropped]);
 
   // --- Pasar a PDF (lo hace Tico solo, sin IA) ----------------------------------------
 
@@ -287,7 +295,7 @@ function Island({ settings }: { settings: Settings }) {
   const convertFiles = useCallback(
     async (list: FileInfo[], userText: string) => {
       if (!isTauri()) return;
-      setFiles((current) => current.filter((f) => !list.some((l) => l.path === f.path)));
+      removeDropped(list.map((f) => f.path));
       for (const [i, file] of list.entries()) {
         const id = chat.startTask(i === 0 ? userText : "", file.name, i === 0 ? list : undefined);
         trackRecent(id, { status: "working", source: file.name });
@@ -307,7 +315,7 @@ function Island({ settings }: { settings: Settings }) {
         }
       }
     },
-    [chat, playEmote, sound, trackRecent],
+    [chat, playEmote, removeDropped, sound, trackRecent],
   );
 
   /** "Pásame este Word a PDF" sin archivo: el documento abierto en Word (o eliges uno). */
@@ -346,7 +354,7 @@ function Island({ settings }: { settings: Settings }) {
     (text: string, capture: CapturePreview | null, attached: FileInfo[]) => {
       setDraft("");
       setPendingCapture(null);
-      setFiles([]);
+      clearDropped();
       setTab("chat");
       sound("send");
       if (THANKS.test(text)) playEmote("love", 2200);
@@ -355,7 +363,7 @@ function Island({ settings }: { settings: Settings }) {
         files: attached,
       });
     },
-    [chat, playEmote, sound],
+    [chat, clearDropped, playEmote, sound],
   );
 
   /** "Mira mi pantalla": captura y, según el ajuste, enseña la miniatura o la envía ya. */
@@ -399,6 +407,12 @@ function Island({ settings }: { settings: Settings }) {
       else void convertActiveDocument(message);
       return;
     }
+    // "Envíalo por correo a ana@x.com" con archivos adjuntos: abrimos el correo.
+    if (files.length > 0 && wantsMail(message)) {
+      setDraft("");
+      openMail(files, emailsIn(message).join(", "));
+      return;
+    }
     // "¿Qué ves en mi pantalla?": capturamos sin tener que pulsar el botón.
     if (!pendingCapture && settings.autoCapture && wantsScreen(message)) {
       setDraft("");
@@ -407,6 +421,45 @@ function Island({ settings }: { settings: Settings }) {
     }
     sendMessage(message, pendingCapture, files);
   };
+
+  // --- Mover y enviar por correo ------------------------------------------------------
+
+  const openMail = (list: FileInfo[], to?: string) => {
+    if (list.length === 0) return;
+    setTab("files");
+    setCompose({ files: list, ...(to ? { to } : {}) });
+    sound("pop");
+  };
+
+  const movedText = useCallback(
+    (moved: FileInfo[]) =>
+      t("island.moved", { count: moved.length, folder: folderName(moved[0]?.path.replace(/[\\/][^\\/]*$/, "") ?? "") }),
+    [t],
+  );
+
+  const moveFiles = (list: FileInfo[], dir?: string) => {
+    if (!isTauri() || list.length === 0) return;
+    setPicking(dir === undefined);
+    api
+      .filesMove(
+        list.map((f) => f.path),
+        dir,
+      )
+      .then((moved) => {
+        if (moved.length === 0) return;
+        // Los archivos siguen en la isla, ya con su sitio nuevo.
+        replaceDropped(list, moved);
+        setFlash(movedText(moved));
+        sound("success");
+        playEmote("proud", 1600);
+      })
+      .catch((e: unknown) => {
+        chat.notify(toAppError(e));
+        setTab("chat");
+      })
+      .finally(() => setPicking(false));
+  };
+
 
   /** Borra la conversación y también la captura pendiente (Rust ya la ha descartado). */
   const clearChat = useCallback(() => {
@@ -449,6 +502,8 @@ function Island({ settings }: { settings: Settings }) {
     { ...meta("improve", "✍️"), run: () => prefill(t("command.improve.prefix")) },
     { ...meta("explain", "🎓"), run: () => prefill(t("command.explain.prefix")) },
     { ...meta("new", "🧹"), run: clearChat },
+    { ...meta("mail", "✉️"), run: () => (files.length ? openMail(files) : void pickFiles()) },
+    { ...meta("move", "📁"), run: () => (files.length ? moveFiles(files) : void pickFiles()) },
     ...workspaceTicos(settings, workspace)
       .filter((p) => p.id !== active.id)
       .map((p) => ({
@@ -513,6 +568,7 @@ function Island({ settings }: { settings: Settings }) {
     files.length > 0 ||
     dragging ||
     picking ||
+    compose !== null ||
     converting > 0;
   useEffect(() => {
     dispatch({ type: "conversation", active: conversationActive });
@@ -657,6 +713,7 @@ function Island({ settings }: { settings: Settings }) {
   const lastReply = [...chat.messages].reverse().find((m) => m.role === "assistant");
   let status = t("island.hint");
   if (protestText) status = protestText;
+  else if (flash) status = flash;
   else if (wsNotice) status = t("island.workspace.switched", { name: wsNotice });
   else if (converting > 0) status = t("island.working");
   else if (capturing) status = t("island.capturing");
@@ -753,6 +810,11 @@ function Island({ settings }: { settings: Settings }) {
           }}
           folder={workspace.folder}
           onAddFiles={addFiles}
+          destinations={settings.workspaces
+            .filter((w) => w.folder)
+            .map((w) => ({ name: w.name, icon: w.icon, path: w.folder }))}
+          onMove={moveFiles}
+          onMail={(list) => openMail(list)}
         />
       );
     } else {
@@ -785,7 +847,10 @@ function Island({ settings }: { settings: Settings }) {
       <div className="content content-expanded" style={box} key="expanded">
         <Header
           tab={tab}
-          setTab={setTab}
+          setTab={(next) => {
+            setCompose(null);
+            setTab(next);
+          }}
           status={ticoChip}
           sounds={settings.sounds}
           onToggleSound={() => save({ ...settings, sounds: !settings.sounds })}
@@ -795,9 +860,34 @@ function Island({ settings }: { settings: Settings }) {
           onClose={() => dispatch({ type: "escape" })}
           fileCount={files.length}
         />
-        <div className="tab-body" key={tab}>
-          {view}
-        </div>
+        {compose ? (
+          <div className="tab-body" key="mail">
+            <MailSheet
+              files={compose.files}
+              {...(compose.to ? { to: compose.to } : {})}
+              signature={settings.mail.name}
+              onClose={() => setCompose(null)}
+              onAddFiles={async () => (isTauri() ? api.filesPick(false, workspace.folder).catch(() => []) : [])}
+              onOpenSettings={() => void api.openSettings("mail").catch(console.error)}
+              onDone={(result) => {
+                setCompose(null);
+                removeDropped(compose.files.map((f) => f.path));
+                if (result.kind === "sent") {
+                  setFlash(t("island.mailSent", { to: result.to.join(", ") }));
+                  sound("success");
+                  playEmote("proud", 1800);
+                } else {
+                  setFlash(t(result.app === "mailto" ? "island.mailOpenedNoAttach" : "island.mailOpened"));
+                  playEmote("wink", 1400);
+                }
+              }}
+            />
+          </div>
+        ) : (
+          <div className="tab-body" key={tab}>
+            {view}
+          </div>
+        )}
       </div>
     );
   }

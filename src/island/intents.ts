@@ -68,3 +68,26 @@ export function wantsScreen(text: string): boolean {
   if (wantsPdf(text)) return false;
   return SCREEN_PATTERNS.some((re) => re.test(t));
 }
+
+const EMAIL_RE = /[\w.+-]+@[\w-]+(\.[\w-]+)+/g;
+
+/** Direcciones de correo escritas en el texto. */
+export function emailsIn(text: string): string[] {
+  return [...new Set(text.match(EMAIL_RE) ?? [])];
+}
+
+const SEND_VERBS = /\b(envia|enviame|envialo|enviala|envialos|enviar|enviarlo|manda|mandame|mandalo|mandala|mandar|mandarlo|reenvia|reenvialo|envia-ho|envia'l|envia-la|send|email|mail|forward)\b/;
+const MAIL_WORDS = /\b(correo|correu|mail|email|e-mail|gmail|outlook)\b/;
+
+/**
+ * ¿Pide enviar por correo lo que hay adjunto? ("mándalo por correo", "envía este PDF a
+ * ana@x.com", "send it by email"). Si solo pide escribir un correo ("escríbeme un correo
+ * para mi jefe"), no: eso lo hace la IA.
+ */
+export function wantsMail(text: string): boolean {
+  const t = normalize(text);
+  const hasAddress = emailsIn(t).length > 0;
+  const sends = SEND_VERBS.test(t);
+  if (!sends) return false;
+  return hasAddress || MAIL_WORDS.test(t);
+}

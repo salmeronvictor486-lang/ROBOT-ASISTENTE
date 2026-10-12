@@ -18,7 +18,7 @@ use crate::island::lock;
 use crate::settings::Settings;
 
 /// Versión del esquema. Cada cambio de tablas añade un paso en `migrate`.
-const SCHEMA_VERSION: i64 = 1;
+const SCHEMA_VERSION: i64 = 2;
 
 const SCHEMA_V1: &str = "
 CREATE TABLE IF NOT EXISTS settings (
@@ -45,6 +45,15 @@ CREATE TABLE IF NOT EXISTS conversions (
     size INTEGER NOT NULL,
     engine TEXT NOT NULL,
     created_at INTEGER NOT NULL
+);
+";
+
+/// Versión 2: direcciones a las que has enviado correo (para sugerirlas al escribir).
+const SCHEMA_V2: &str = "
+CREATE TABLE IF NOT EXISTS contacts (
+    address TEXT PRIMARY KEY COLLATE NOCASE,
+    uses INTEGER NOT NULL DEFAULT 0,
+    last_used INTEGER NOT NULL
 );
 ";
 
@@ -292,6 +301,33 @@ impl Db {
         Ok(())
     }
 
+    // --- Contactos ------------------------------------------------------------------
+
+    /// Apunta las direcciones a las que se ha enviado un correo.
+    pub fn remember_contacts(&self, addresses: &[String]) -> AppResult<()> {
+        let mut conn = lock(&self.conn);
+        let tx = conn.transaction()?;
+        let at = now_ms();
+        for address in addresses {
+            tx.execute(
+                "INSERT INTO contacts (address, uses, last_used) VALUES (?1, 1, ?2)
+                 ON CONFLICT (address) DO UPDATE SET uses = uses + 1, last_used = excluded.last_used",
+                params![address.trim(), at],
+            )?;
+        }
+        tx.commit()?;
+        Ok(())
+    }
+
+    /// Direcciones usadas antes, las más frecuentes primero.
+    pub fn contacts(&self, limit: usize) -> AppResult<Vec<String>> {
+        let conn = lock(&self.conn);
+        let mut stmt = conn.prepare("SELECT address FROM contacts ORDER BY uses DESC, last_used DESC LIMIT ?1")?;
+        let limit = i64::try_from(limit).unwrap_or(i64::MAX);
+        let rows = stmt.query_map(params![limit], |r| r.get::<_, String>(0))?;
+        Ok(rows.collect::<Result<Vec<_>, _>>()?)
+    }
+
     // --- Mantenimiento ---------------------------------------------------------------
 
     pub fn info(&self) -> AppResult<DbInfo> {
@@ -327,6 +363,9 @@ fn migrate(conn: &Connection) -> AppResult<()> {
     }
     if version < 1 {
         conn.execute_batch(SCHEMA_V1)?;
+    }
+    if version < 2 {
+        conn.execute_batch(SCHEMA_V2)?;
     }
     conn.execute_batch(&format!("PRAGMA user_version = {SCHEMA_VERSION}"))?;
     Ok(())
@@ -384,6 +423,25 @@ mod tests {
         let info = db.info().unwrap();
         assert_eq!(info.conversations, 1);
         assert_eq!(info.messages, 2);
+    }
+
+    #[test]
+    fn contacts_are_counted() {
+        let db = Db::in_memory();
+        db.remember_contacts(&["ana@ejemplo.com".into(), "luis@ejemplo.com".into()]).unwrap();
+        db.remember_contacts(&["ANA@ejemplo.com".into()]).unwrap();
+        assert_eq!(db.contacts(10).unwrap(), vec!["ana@ejemplo.com".to_string(), "luis@ejemplo.com".to_string()]);
+    }
+
+    #[test]
+    fn version_one_databases_are_upgraded() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(SCHEMA_V1).unwrap();
+        conn.execute_batch("PRAGMA user_version = 1").unwrap();
+        let conn = Db::prepare(conn).unwrap();
+        let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
+        assert_eq!(version, 2);
+        conn.execute("INSERT INTO contacts (address, last_used) VALUES ('a@b.c', 0)", []).unwrap();
     }
 
     #[test]

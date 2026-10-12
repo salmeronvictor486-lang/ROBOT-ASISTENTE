@@ -381,6 +381,10 @@ export function errorKey(error: AppErrorPayload) {
     case "convert":
     case "noDocument":
     case "database":
+    case "mailSetup":
+    case "mailAuth":
+    case "mail":
+    case "noMailApp":
       return `error.${error.kind}` as const;
     default:
       return "error.other" as const;

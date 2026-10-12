@@ -189,6 +189,40 @@ export interface Settings {
   onboarded: boolean;
   /** Mirar en GitHub si hay versión nueva. */
   checkUpdates: boolean;
+  /** Cuenta de correo para enviar archivos (la contraseña va en el llavero). */
+  mail: MailSettings;
+}
+
+export type MailSecurity = "ssl" | "starttls";
+
+export interface MailSettings {
+  address: string;
+  name: string;
+  /** Vacío: el servidor de tu proveedor (Gmail, iCloud…). */
+  host: string;
+  /** 0: el normal para el cifrado. */
+  port: number;
+  security: MailSecurity;
+  /** Vacío: la dirección. */
+  username: string;
+}
+
+/** Estado del correo (`MailStatus` en Rust). */
+export interface MailStatus {
+  /** Tico puede enviar él solo. */
+  ready: boolean;
+  hasPassword: boolean;
+  host: string | null;
+  /** Web donde se crea la contraseña de aplicación. */
+  helpUrl: string | null;
+}
+
+/** Un correo para enviar (`MailDraft` en Rust). */
+export interface MailDraft {
+  to: string;
+  subject: string;
+  body: string;
+  attachments: string[];
 }
 
 /** Versión nueva publicada (`UpdateInfo` en Rust). */
@@ -375,6 +409,7 @@ export const DEFAULT_SETTINGS: Settings = {
   saveHistory: true,
   onboarded: true,
   checkUpdates: true,
+  mail: { address: "", name: "", host: "", port: 0, security: "ssl", username: "" },
 };
 
 /** El Tico con ese id (o el primero). */

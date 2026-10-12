@@ -1,5 +1,5 @@
-//! Claves de API en el llavero del sistema (Credential Manager en Windows,
-//! Llavero en macOS). Nunca se guardan en texto plano ni se envían al frontend.
+//! Claves de API y la contraseña del correo en el llavero del sistema (Credential Manager
+//! en Windows, Llavero en macOS). Nunca se guardan en texto plano ni se envían al frontend.
 
 use keyring::Entry;
 
@@ -9,7 +9,32 @@ use crate::settings::ProviderKind;
 const SERVICE: &str = "com.victorsalmeron.tico";
 
 fn entry(provider: ProviderKind) -> AppResult<Entry> {
-    Ok(Entry::new(SERVICE, provider.id())?)
+    named(provider.id())
+}
+
+fn named(account: &str) -> AppResult<Entry> {
+    Ok(Entry::new(SERVICE, account)?)
+}
+
+/// Guarda un secreto con nombre propio (p. ej. "mail").
+pub fn set_named(account: &str, value: &str) -> AppResult<()> {
+    named(account)?.set_password(value)?;
+    Ok(())
+}
+
+pub fn get_named(account: &str) -> AppResult<Option<String>> {
+    match named(account)?.get_password() {
+        Ok(value) => Ok(Some(value)),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(err) => Err(err.into()),
+    }
+}
+
+pub fn delete_named(account: &str) -> AppResult<()> {
+    match named(account)?.delete_credential() {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(err) => Err(err.into()),
+    }
 }
 
 pub fn set(provider: ProviderKind, key: &str) -> AppResult<()> {

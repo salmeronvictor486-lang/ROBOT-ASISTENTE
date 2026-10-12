@@ -409,6 +409,34 @@ pub fn default_workspaces(ticos: &[TicoProfile]) -> Vec<Workspace> {
     list
 }
 
+/// Cifrado de la conexión con el servidor de correo.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum MailSecurity {
+    /// TLS desde el principio (puerto 465).
+    #[default]
+    Ssl,
+    /// Empieza sin cifrar y pasa a TLS (puerto 587).
+    Starttls,
+}
+
+/// Tu cuenta de correo para enviar desde Tico (la contraseña va en el llavero).
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase", default)]
+pub struct MailSettings {
+    /// Tu dirección ("victor@gmail.com").
+    pub address: String,
+    /// Nombre que ven los destinatarios.
+    pub name: String,
+    /// Servidor SMTP; vacío = el de tu proveedor (Gmail, iCloud…).
+    pub host: String,
+    /// 0 = el normal para el cifrado elegido.
+    pub port: u16,
+    pub security: MailSecurity,
+    /// Usuario del servidor; vacío = la dirección.
+    pub username: String,
+}
+
 /// Dónde se guardan los archivos convertidos (Word → PDF…).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
 #[serde(rename_all = "lowercase")]
@@ -501,6 +529,8 @@ pub struct Settings {
     pub onboarded: bool,
     /// Mirar en GitHub si hay una versión nueva (solo pregunta el número de versión).
     pub check_updates: bool,
+    /// Cuenta de correo para enviar archivos.
+    pub mail: MailSettings,
     /// Colores de la versión 0.x (un solo Tico). Solo se leen para migrarlos.
     #[serde(rename = "robotBaseColor", skip_serializing)]
     pub legacy_base_color: Option<String>,
@@ -547,6 +577,7 @@ impl Default for Settings {
             save_history: true,
             onboarded: false,
             check_updates: true,
+            mail: MailSettings::default(),
             legacy_base_color: None,
             legacy_accent_color: None,
         }
@@ -686,6 +717,10 @@ impl Settings {
         self.lmstudio_url = clean_url(&self.lmstudio_url).unwrap_or(defaults.lmstudio_url);
         self.custom_url = clean_url(&self.custom_url).unwrap_or_default();
         self.pet_position = self.pet_position.filter(|[x, y]| x.is_finite() && y.is_finite());
+        self.mail.address = self.mail.address.trim().to_string();
+        self.mail.name = self.mail.name.trim().chars().take(80).collect();
+        self.mail.host = self.mail.host.trim().trim_end_matches('.').to_lowercase();
+        self.mail.username = self.mail.username.trim().to_string();
 
         // Ticos: al menos uno, ids únicos y valores válidos.
         let fallback = TicoProfile::default();

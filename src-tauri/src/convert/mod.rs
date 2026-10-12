@@ -57,7 +57,7 @@ pub fn unique_pdf_path(dir: &Path, stem: &str) -> PathBuf {
 
 /// Ejecuta un programa con un tiempo máximo. Devuelve lo que ha escrito si ha terminado
 /// bien (`capture`), o una cadena vacía si no se pedía; `None` si ha fallado o tardado demasiado.
-fn run_with_timeout(mut cmd: Command, capture: bool) -> Option<String> {
+pub(crate) fn run_with_timeout(mut cmd: Command, capture: bool) -> Option<String> {
     #[cfg(target_os = "windows")]
     {
         use std::os::windows::process::CommandExt;

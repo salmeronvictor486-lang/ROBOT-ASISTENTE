@@ -6,6 +6,7 @@ import { Tico } from "../robot/Tico";
 import { DEFAULT_SETTINGS, findTico, type AppErrorPayload, type Settings, type UpdateInfo } from "../types";
 import { CommitInput, Row, Section, Segmented, ShortcutInput, Slider, Toggle } from "./fields";
 import { DataSection } from "./DataSection";
+import { MailSection } from "./MailSection";
 import { ProviderSection } from "./ProviderSection";
 import { TicosSection } from "./TicosSection";
 import { WorkspacesSection } from "./WorkspacesSection";
@@ -15,7 +16,7 @@ const SAVE_DELAY_MS = 400;
 
 type SaveState = { kind: "idle" } | { kind: "saving" } | { kind: "saved" } | { kind: "error"; error: AppErrorPayload };
 
-const SECTIONS = ["ticos", "workspaces", "ai", "island", "appearance", "screen", "files", "shortcuts", "data", "system"] as const;
+const SECTIONS = ["ticos", "workspaces", "ai", "island", "appearance", "screen", "files", "mail", "shortcuts", "data", "system"] as const;
 type SectionId = (typeof SECTIONS)[number];
 
 declare global {
@@ -305,6 +306,8 @@ function SettingsPage({
             />
           </Row>
         </Section>
+
+        <MailSection settings={settings} update={update} />
 
         <Section id="shortcuts" title={t("settings.section.shortcuts")}>
           <p className="hint">{t("settings.shortcutHint")}</p>

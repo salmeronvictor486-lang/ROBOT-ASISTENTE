@@ -64,6 +64,15 @@ pub enum AppError {
     NoDocument,
     #[error("Base de datos: {0}")]
     Database(String),
+    #[error("Falta configurar tu correo")]
+    MailSetup,
+    #[error("El servidor de correo no acepta tu usuario o contraseña")]
+    MailAuth,
+    #[error("No se pudo enviar el correo: {0}")]
+    Mail(String),
+    #[error("No he encontrado ninguna app de correo")]
+    #[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+    NoMailApp,
 }
 
 impl AppError {
@@ -98,6 +107,10 @@ impl AppError {
             AppError::Convert(_) => "convert",
             AppError::NoDocument => "noDocument",
             AppError::Database(_) => "database",
+            AppError::MailSetup => "mailSetup",
+            AppError::MailAuth => "mailAuth",
+            AppError::Mail(_) => "mail",
+            AppError::NoMailApp => "noMailApp",
         }
     }
 
@@ -122,7 +135,8 @@ impl AppError {
             | AppError::Autostart(s)
             | AppError::File(s)
             | AppError::Convert(s)
-            | AppError::Database(s) => s.clone(),
+            | AppError::Database(s)
+            | AppError::Mail(s) => s.clone(),
             AppError::Network(e) => e.to_string(),
             AppError::Io(e) => e.to_string(),
             AppError::Json(e) => e.to_string(),
@@ -132,7 +146,10 @@ impl AppError {
             | AppError::Refused
             | AppError::ScreenPermission
             | AppError::MissingUrl
-            | AppError::NoDocument => String::new(),
+            | AppError::NoDocument
+            | AppError::MailSetup
+            | AppError::MailAuth
+            | AppError::NoMailApp => String::new(),
         }
     }
 

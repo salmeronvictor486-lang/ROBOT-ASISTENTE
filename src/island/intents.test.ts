@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { wantsPdf, wantsScreen } from "./intents";
+import { emailsIn, wantsMail, wantsPdf, wantsScreen } from "./intents";
 
 describe("wantsPdf", () => {
   it.each([
@@ -42,4 +42,25 @@ describe("wantsScreen", () => {
     "ignora «%s»",
     (text) => expect(wantsScreen(text)).toBe(false),
   );
+});
+
+describe("wantsMail", () => {
+  it.each([
+    "mándalo por correo",
+    "envía este PDF a ana@ejemplo.com",
+    "envialo a luis@empresa.es y eva@x.org",
+    "send it by email",
+    "envia-ho per correu",
+  ])("sí: %s", (text) => expect(wantsMail(text)).toBe(true));
+
+  it.each([
+    "escríbeme un correo para mi jefe",
+    "¿qué es el correo electrónico?",
+    "resume este pdf",
+    "envíame un resumen",
+  ])("no: %s", (text) => expect(wantsMail(text)).toBe(false));
+
+  it("saca las direcciones", () => {
+    expect(emailsIn("a ana@x.com, ana@x.com y luis.p+tico@sub.y.es")).toEqual(["ana@x.com", "luis.p+tico@sub.y.es"]);
+  });
 });

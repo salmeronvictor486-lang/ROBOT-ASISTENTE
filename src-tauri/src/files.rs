@@ -673,6 +673,57 @@ pub async fn workspace_files(folder: String) -> AppResult<Vec<FileInfo>> {
         .map_err(|e| AppError::File(e.to_string()))
 }
 
+/// Nombre libre en `dir` para `name`: "Informe.pdf", y si ya existe "Informe (2).pdf"…
+fn free_name(dir: &Path, name: &str) -> PathBuf {
+    let first = dir.join(name);
+    if !first.exists() {
+        return first;
+    }
+    let path = Path::new(name);
+    let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+    let ext = path.extension().map(|e| format!(".{}", e.to_string_lossy())).unwrap_or_default();
+    (2..10_000)
+        .map(|n| dir.join(format!("{stem} ({n}){ext}")))
+        .find(|p| !p.exists())
+        .unwrap_or(first)
+}
+
+/// Mueve un archivo a otra carpeta (sin pisar nada) y devuelve dónde ha quedado.
+pub fn move_file(from: &Path, dir: &Path) -> AppResult<FileInfo> {
+    if !dir.is_dir() {
+        return Err(AppError::File("la carpeta de destino no existe".into()));
+    }
+    let name = from.file_name().ok_or_else(|| AppError::File("ruta sin nombre".into()))?;
+    if from.parent() == Some(dir) {
+        return info(from).ok_or_else(|| AppError::File("el archivo ya no está ahí".into()));
+    }
+    let target = free_name(dir, &name.to_string_lossy());
+    // Entre discos distintos `rename` falla: entonces se copia y se borra el original.
+    if std::fs::rename(from, &target).is_err() {
+        std::fs::copy(from, &target)?;
+        std::fs::remove_file(from)?;
+    }
+    info(&target).ok_or_else(|| AppError::File("no se pudo mover".into()))
+}
+
+/// Mueve archivos a una carpeta (`dir`) o a la que elija el usuario (`None`).
+/// Devuelve los archivos ya movidos (vacío si se cancela el selector).
+#[tauri::command]
+pub async fn files_move(app: AppHandle, paths: Vec<String>, dir: Option<String>) -> AppResult<Vec<FileInfo>> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let dir = match dir {
+            Some(dir) => PathBuf::from(dir),
+            None => match app.dialog().file().blocking_pick_folder().and_then(|p| p.into_path().ok()) {
+                Some(dir) => dir,
+                None => return Ok(Vec::new()),
+            },
+        };
+        paths.iter().map(|p| move_file(&existing(p)?, &dir)).collect()
+    })
+    .await
+    .map_err(|e| AppError::File(e.to_string()))?
+}
+
 fn existing(path: &str) -> AppResult<PathBuf> {
     let path = PathBuf::from(path);
     if path.exists() {
@@ -840,6 +891,22 @@ mod tests {
     fn truncate_marks_the_cut() {
         assert_eq!(truncate("  corto ", 10), "corto");
         assert!(truncate(&"x".repeat(50), 10).ends_with("too long]"));
+    }
+
+    #[test]
+    fn moving_never_overwrites() {
+        let base = std::env::temp_dir().join(format!("tico-move-{}", std::process::id()));
+        let (from, to) = (base.join("origen"), base.join("destino"));
+        std::fs::create_dir_all(&from).unwrap();
+        std::fs::create_dir_all(&to).unwrap();
+        std::fs::write(from.join("informe.pdf"), "nuevo").unwrap();
+        std::fs::write(to.join("informe.pdf"), "viejo").unwrap();
+        let moved = move_file(&from.join("informe.pdf"), &to).unwrap();
+        assert_eq!(moved.name, "informe (2).pdf");
+        assert!(!from.join("informe.pdf").exists());
+        assert_eq!(std::fs::read_to_string(to.join("informe.pdf")).unwrap(), "viejo");
+        assert!(move_file(&to.join("informe.pdf"), &base.join("no-existe")).is_err());
+        let _ = std::fs::remove_dir_all(base);
     }
 
     #[test]
