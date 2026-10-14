@@ -130,8 +130,8 @@ Pulsa el botón de tu sistema y la descarga empieza sola:
 | [`Tico-Windows-x64-setup.exe`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Windows-x64-setup.exe) | Windows 10/11 de 64 bits con Intel o AMD (lo más común) |
 | [`Tico-Windows-x86-setup.exe`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Windows-x86-setup.exe) | Windows de 32 bits y Windows 10 con procesador ARM |
 | [`Tico-macOS.dmg`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-macOS.dmg) | Mac con Intel o Apple Silicon |
-| [`Tico-Linux-amd64.deb`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Linux-amd64.deb) | Ubuntu, Debian, Linux Mint, Pop!_OS… (64 bits) |
-| [`Tico-Linux-x86_64.AppImage`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Linux-x86_64.AppImage) | Cualquier Linux de 64 bits, sin instalar |
+| [`Tico-Linux-amd64.deb`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Linux-amd64.deb) | Ubuntu 24.04+, Debian 13, Linux Mint 22, Pop!_OS 24… (64 bits) |
+| [`Tico-Linux-x86_64.AppImage`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Linux-x86_64.AppImage) | Cualquier Linux de 64 bits reciente (2024 o después), sin instalar |
 | [`Tico-Windows-x64-portable.zip`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Windows-x64-portable.zip) | Igual que el `.exe` de 64 bits, pero sin instalar: descomprime y abre `Tico.exe` |
 | [`Tico-Windows-x86-portable.zip`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Windows-x86-portable.zip) | Igual que el de 32 bits, sin instalar |
 | [Código fuente (`.zip`)](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/archive/HEAD.zip) | Para compilarlo tú (ver más abajo) |

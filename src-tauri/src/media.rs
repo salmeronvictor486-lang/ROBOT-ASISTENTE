@@ -26,7 +26,8 @@ pub enum Art {
     /// Windows y Música de macOS la dan en bytes (en Linux no se usa).
     #[cfg_attr(target_os = "linux", allow(dead_code))]
     Bytes(Vec<u8>),
-    /// http(s):// o file://
+    /// http(s):// o file:// (Spotify en macOS y MPRIS en Linux; Windows da bytes).
+    #[cfg_attr(target_os = "windows", allow(dead_code))]
     Url(String),
 }
 

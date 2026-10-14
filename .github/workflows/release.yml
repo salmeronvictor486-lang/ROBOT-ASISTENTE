@@ -44,7 +44,7 @@ jobs:
             arch: x86
             artifact: Tico-Windows-32bits
           - name: Linux
-            os: ubuntu-22.04
+            os: ubuntu-24.04
             rust-targets: ""
             args: --bundles appimage,deb
             out-dir: src-tauri/target/release
@@ -75,7 +75,7 @@ jobs:
           workspaces: src-tauri
           key: release-${{ matrix.artifact }}
 
-      # Ubuntu 22.04: el AppImage hecho ahí arranca en casi todas las distribuciones.
+      # Ubuntu 24.04: PipeWire 1.x, que necesita la captura de pantalla (xcap).
       - name: Librerías de Linux
         if: runner.os == 'Linux'
         run: |

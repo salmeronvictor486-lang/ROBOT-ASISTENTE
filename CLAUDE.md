@@ -253,8 +253,9 @@ src-tauri/src/
     MPRIS y `wpctl`/`pactl` para el volumen. Las portadas se reducen a JPEG de 256 px y viajan
     como `data:` (la CSP solo permite imágenes `self` y `data:`); se cachea la última.
     «Pausa», «siguiente canción» o «sube el volumen» se hacen sin IA (`mediaIntent`).
-40. **Linux (1.2)**: AppImage y .deb hechos en Ubuntu 22.04 (glibc antigua = arranca en más
-    distribuciones). Con Wayland, `main.rs` pone `GDK_BACKEND=x11` para que la isla pueda
+40. **Linux (1.2)**: AppImage y .deb hechos en Ubuntu 24.04 (la captura, `xcap`, necesita
+    PipeWire 1.x: con el de Ubuntu 22.04 no compila). Funciona en Ubuntu 24.04+, Debian 13,
+    Fedora 40+ y similares. Con Wayland, `main.rs` pone `GDK_BACKEND=x11` para que la isla pueda
     colocarse y quedar encima (XWayland). Sin OCR en Linux.
 41. **Respuestas e interacción (1.2)**: `system_prompt` recibe un `PromptContext` (idioma,
     Tico, largo, fecha, espacio, nombre del usuario, memorias, app activa e ideas). Reglas: ir
