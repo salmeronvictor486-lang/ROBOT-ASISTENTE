@@ -191,6 +191,21 @@ export interface Settings {
   checkUpdates: boolean;
   /** Cuenta de correo para enviar archivos (la contraseña va en el llavero). */
   mail: MailSettings;
+  /** Cómo se llama el usuario. */
+  userName: string;
+  /** Usar lo que pidió recordar. */
+  useMemory: boolean;
+  /** Decirle a la IA qué app está usando. */
+  shareActiveApp: boolean;
+  /** Ideas para seguir al final de cada respuesta. */
+  followUps: boolean;
+}
+
+/** Algo que el usuario pidió recordar (`Memory` en Rust). */
+export interface Memory {
+  id: number;
+  text: string;
+  createdAt: number;
 }
 
 export type MailSecurity = "ssl" | "starttls";
@@ -423,6 +438,10 @@ export const DEFAULT_SETTINGS: Settings = {
   onboarded: true,
   checkUpdates: true,
   mail: { address: "", name: "", host: "", port: 0, security: "ssl", username: "" },
+  userName: "",
+  useMemory: true,
+  shareActiveApp: true,
+  followUps: true,
 };
 
 /** El Tico con ese id (o el primero). */

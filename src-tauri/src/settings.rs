@@ -531,6 +531,14 @@ pub struct Settings {
     pub check_updates: bool,
     /// Cuenta de correo para enviar archivos.
     pub mail: MailSettings,
+    /// Cómo se llama el usuario (para que Tico le hable por su nombre).
+    pub user_name: String,
+    /// Usar lo que el usuario pidió recordar en todas las conversaciones.
+    pub use_memory: bool,
+    /// Decirle a la IA qué app está usando (nunca si es una app bloqueada).
+    pub share_active_app: bool,
+    /// Ideas para seguir la conversación al final de cada respuesta.
+    pub follow_ups: bool,
     /// Colores de la versión 0.x (un solo Tico). Solo se leen para migrarlos.
     #[serde(rename = "robotBaseColor", skip_serializing)]
     pub legacy_base_color: Option<String>,
@@ -578,6 +586,10 @@ impl Default for Settings {
             onboarded: false,
             check_updates: true,
             mail: MailSettings::default(),
+            user_name: String::new(),
+            use_memory: true,
+            share_active_app: true,
+            follow_ups: true,
             legacy_base_color: None,
             legacy_accent_color: None,
         }
@@ -717,6 +729,7 @@ impl Settings {
         self.lmstudio_url = clean_url(&self.lmstudio_url).unwrap_or(defaults.lmstudio_url);
         self.custom_url = clean_url(&self.custom_url).unwrap_or_default();
         self.pet_position = self.pet_position.filter(|[x, y]| x.is_finite() && y.is_finite());
+        self.user_name = self.user_name.trim().chars().take(60).collect();
         self.mail.address = self.mail.address.trim().to_string();
         self.mail.name = self.mail.name.trim().chars().take(80).collect();
         self.mail.host = self.mail.host.trim().trim_end_matches('.').to_lowercase();

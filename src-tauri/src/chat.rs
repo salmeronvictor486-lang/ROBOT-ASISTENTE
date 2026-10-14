@@ -14,7 +14,10 @@ use tauri::{AppHandle, Emitter, Manager, State};
 
 use crate::ai::models::{resolve_model, resolve_ollama_model};
 use crate::ai::router::{self, AnyProvider};
-use crate::ai::{alternating, system_prompt, workspace_prompt, ChatMessage, ChatRequest, ImageData, Provider, Role};
+use crate::ai::{
+    alternating, split_suggestions, system_prompt, workspace_prompt, ChatMessage, ChatRequest, ImageData, PromptContext,
+    Provider, Role,
+};
 use crate::db::StoredMessage;
 use crate::error::{AppError, AppResult};
 use crate::files;
@@ -279,9 +282,31 @@ pub async fn chat_send(
     } else {
         String::new()
     };
+    // Lo que el usuario pidió recordar y la app que está usando (si lo permite).
+    let memories: Vec<String> = if settings.use_memory {
+        state.db.memories().unwrap_or_default().into_iter().map(|m| m.text).collect()
+    } else {
+        Vec::new()
+    };
+    let active_app = if settings.share_active_app {
+        let blocked = settings.blocked_apps.clone();
+        tauri::async_runtime::spawn_blocking(move || active_app_context(&blocked)).await.ok().flatten()
+    } else {
+        None
+    };
     let request = ChatRequest {
         model,
-        system: system_prompt(&options.lang, &tico, settings.answer_length, &options.now, &workspace_text),
+        system: system_prompt(&PromptContext {
+            language: &options.lang,
+            tico: &tico,
+            length: settings.answer_length,
+            now: &options.now,
+            workspace: &workspace_text,
+            user_name: &settings.user_name,
+            memories: &memories,
+            active_app: active_app.as_deref(),
+            suggestions: settings.follow_ups,
+        }),
         messages,
         max_tokens: settings.answer_length.max_tokens(),
     };
@@ -317,6 +342,8 @@ pub async fn chat_send(
         }
     };
 
+    // Las ideas para seguir son para los botones: en el historial va solo la respuesta.
+    let (answer, _) = split_suggestions(&answer);
     {
         let mut chats = lock(&state.chat);
         let history = chats.entry(key.clone()).or_default();
@@ -344,6 +371,40 @@ pub async fn chat_send(
     result?;
     let _ = on_event.send(ChatEvent::Done);
     Ok(())
+}
+
+/// "Microsoft Word — Informe.docx": la app que el usuario tiene delante, salvo que sea una
+/// app bloqueada (banco, contraseñas…): entonces no se dice nada.
+fn active_app_context(blocked: &[String]) -> Option<String> {
+    let (app, title) = crate::capture::active_window()?;
+    let windows = [(app.clone(), title.clone())];
+    if crate::capture::find_blocked(&windows, blocked).is_some() {
+        return None;
+    }
+    let app = crate::media::friendly_app(&app);
+    let title: String = title.trim().chars().take(120).collect();
+    Some(if title.is_empty() || title == app { app } else { format!("{app} — {title}") })
+}
+
+/// Lo que el usuario ha pedido recordar.
+#[tauri::command]
+pub fn memory_list(state: State<'_, AppState>) -> AppResult<Vec<crate::db::Memory>> {
+    state.db.memories()
+}
+
+#[tauri::command]
+pub fn memory_add(state: State<'_, AppState>, text: String) -> AppResult<crate::db::Memory> {
+    state.db.add_memory(&text)
+}
+
+#[tauri::command]
+pub fn memory_delete(state: State<'_, AppState>, id: i64) -> AppResult<()> {
+    state.db.delete_memory(id)
+}
+
+#[tauri::command]
+pub fn memory_clear(state: State<'_, AppState>) -> AppResult<()> {
+    state.db.clear_memories()
 }
 
 /// Clave de una conversación: cada Tico tiene una por espacio de trabajo.

@@ -120,3 +120,51 @@ export function mediaIntent(text: string): MediaIntent | null {
   for (const [re, intent] of rules) if (re.test(t)) return intent;
   return null;
 }
+
+export type MemoryIntent = { kind: "remember"; text: string } | { kind: "forget"; text: string } | { kind: "list" };
+
+/** Primera letra en mayúscula ("vivo en Barcelona" → "Vivo en Barcelona"). */
+function capitalize(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+/**
+ * "Recuerda que soy alérgico al marisco", "olvida que vivo en Madrid", "¿qué recuerdas de mí?".
+ * "Recuérdame cómo se hace…" no es esto (es pedir una explicación): hace falta "que" o ":".
+ */
+export function memoryIntent(text: string): MemoryIntent | null {
+  const clean = text.trim().replace(/^tico[,:]?\s+/i, "");
+  const n = normalize(clean).replace(/[¿?¡!]/g, "").trim();
+  if (/^(que|what) (recuerdas|sabes|do you remember|do you know|recordes|saps) (de mi|about me|sobre mi)$/.test(n)) {
+    return { kind: "list" };
+  }
+  const remember =
+    /^(recuerda|acuerdate de|apunta|guarda en tu memoria|no olvides|recorda|recorda't|remember|don't forget)( que| that|:)\s*(.+)$/i;
+  const forget = /^(olvida|olvidate de|borra de tu memoria|oblida|forget)( que| that|:)?\s+(.+)$/i;
+  // Se busca en el texto sin tildes, pero se guarda el original (con sus tildes).
+  const r = remember.exec(n);
+  if (r) {
+    const start = clean.length - (r[3] ?? "").length;
+    return { kind: "remember", text: capitalize(clean.slice(start).trim()) };
+  }
+  const f = forget.exec(n);
+  if (f && (f[3] ?? "").split(" ").length >= 2) {
+    const start = clean.length - (f[3] ?? "").length;
+    return { kind: "forget", text: clean.slice(start).trim() };
+  }
+  return null;
+}
+
+/** El recuerdo que más se parece a lo que se pide olvidar (o `undefined`). */
+export function findMemory<T extends { text: string }>(memories: T[], query: string): T | undefined {
+  const words = normalize(query)
+    .split(/[^a-z0-9ñ]+/)
+    .filter((w) => w.length > 2);
+  let best: { memory: T; score: number } | undefined;
+  for (const memory of memories) {
+    const target = normalize(memory.text);
+    const score = words.filter((w) => target.includes(w)).length / Math.max(1, words.length);
+    if (score > (best?.score ?? 0)) best = { memory, score };
+  }
+  return best && best.score >= 0.5 ? best.memory : undefined;
+}

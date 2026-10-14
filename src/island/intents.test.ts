@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emailsIn, mediaIntent, wantsMail, wantsPdf, wantsScreen } from "./intents";
+import { emailsIn, findMemory, mediaIntent, memoryIntent, wantsMail, wantsPdf, wantsScreen } from "./intents";
 
 describe("wantsPdf", () => {
   it.each([
@@ -87,4 +87,31 @@ describe("mediaIntent", () => {
     "para qué sirve el volumen de un cilindro",
     "siguiente paso",
   ])("no: %s", (text) => expect(mediaIntent(text)).toBeNull());
+});
+
+describe("memoryIntent", () => {
+  it("recuerda con tildes y mayúscula", () => {
+    expect(memoryIntent("recuerda que soy alérgico al marisco")).toEqual({ kind: "remember", text: "Soy alérgico al marisco" });
+    expect(memoryIntent("Tico, acuérdate de que mi jefa se llama Ana")).toEqual({ kind: "remember", text: "Mi jefa se llama Ana" });
+    expect(memoryIntent("remember that I prefer short answers")).toEqual({ kind: "remember", text: "I prefer short answers" });
+    expect(memoryIntent("apunta: el wifi de casa es TicoNet")).toEqual({ kind: "remember", text: "El wifi de casa es TicoNet" });
+  });
+
+  it("olvidar y listar", () => {
+    expect(memoryIntent("olvida que vivo en Madrid")).toEqual({ kind: "forget", text: "vivo en Madrid" });
+    expect(memoryIntent("¿Qué recuerdas de mí?")).toEqual({ kind: "list" });
+    expect(memoryIntent("what do you remember about me?")).toEqual({ kind: "list" });
+  });
+
+  it.each(["recuérdame cómo se hace una tabla dinámica", "olvídalo", "¿te acuerdas de la receta?", "guarda el archivo"])(
+    "no: %s",
+    (text) => expect(memoryIntent(text)).toBeNull(),
+  );
+
+  it("encuentra el recuerdo a borrar", () => {
+    const list = [{ text: "Vivo en Barcelona" }, { text: "Mi jefa se llama Ana" }];
+    expect(findMemory(list, "que vivo en Barcelona")?.text).toBe("Vivo en Barcelona");
+    expect(findMemory(list, "lo de mi jefa Ana")?.text).toBe("Mi jefa se llama Ana");
+    expect(findMemory(list, "el coche rojo")).toBeUndefined();
+  });
 });

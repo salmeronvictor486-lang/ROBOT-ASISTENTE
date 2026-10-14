@@ -764,3 +764,55 @@ input[type="color"] {
   justify-content: flex-end;
   padding-top: 6px;
 }
+
+/* ---------- Memoria ---------- */
+
+.memory-box {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+}
+
+.memory-list {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.memory-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 12px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.memory-list span {
+  flex: 1;
+}
+
+.memory-box input[type="text"] {
+  flex: 1;
+  min-width: 200px;
+}
+
+.icon-x {
+  width: 24px;
+  height: 24px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.icon-x:hover {
+  background: var(--border);
+  color: var(--text);
+}

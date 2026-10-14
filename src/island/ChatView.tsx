@@ -5,6 +5,7 @@ import type { FileInfo } from "../types";
 import { FILE_KINDS } from "./fileKinds";
 import { IconClip, IconClose, IconCopy, IconEye, IconGear, IconSend, IconSparkle, IconStop } from "./icons";
 import { Markdown } from "./Markdown";
+import { splitSuggestions } from "./parseMarkdown";
 import { TaskCard } from "./TaskCard";
 import { errorKey, errorVars, type ChatApi, type UiMessage } from "./useChat";
 
@@ -43,6 +44,10 @@ interface Props {
   /** Comandos de la paleta "/". */
   commands: Command[];
   suggestions: Suggestion[];
+  /** Enviar una de las ideas que propone Tico al final de su respuesta. */
+  onFollowUp: (text: string) => void;
+  /** Editar la última pregunta (botón o flecha ↑ con el cuadro vacío). */
+  onEditLast: () => void;
 }
 
 /** Pestaña de chat: Tico a la izquierda, mensajes y cuadro de texto a la derecha. */
@@ -67,6 +72,8 @@ export function ChatView({
   onOpenAiSettings,
   commands,
   suggestions,
+  onFollowUp,
+  onEditLast,
 }: Props) {
   const t = useT();
   const listRef = useRef<HTMLDivElement>(null);
@@ -88,11 +95,18 @@ export function ChatView({
   const lastId = chat.messages[chat.messages.length - 1]?.id;
   const before = (m: UiMessage): UiMessage | undefined => chat.messages[chat.messages.findIndex((x) => x.id === m.id) - 1];
 
-  // Siempre mostramos lo último que ha llegado.
+  // Lo último que llega se ve solo si estás abajo; si has subido a leer, no te movemos.
+  const [pinned, setPinned] = useState(true);
   useEffect(() => {
     const list = listRef.current;
-    if (list) list.scrollTop = list.scrollHeight;
-  }, [chat.messages]);
+    if (list && pinned) list.scrollTop = list.scrollHeight;
+  }, [chat.messages, pinned]);
+  const toBottom = () => {
+    const list = listRef.current;
+    if (list) list.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
+    setPinned(true);
+  };
+  const lastUserId = [...chat.messages].reverse().find((m) => m.role === "user")?.id;
 
   const stop = (handler: () => void) => (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -103,7 +117,15 @@ export function ChatView({
     <div className="chat-view">
       <div className="chat-side">{tico}</div>
       <div className="chat-main">
-        <div className="messages" ref={listRef}>
+        <div className="messages-wrap">
+        <div
+          className="messages"
+          ref={listRef}
+          onScroll={(e) => {
+            const el = e.currentTarget;
+            setPinned(el.scrollHeight - el.scrollTop - el.clientHeight < 40);
+          }}
+        >
           {chat.messages.length === 0 && (
             <div className="empty-chat">
               <p>{t("island.emptyChat")}</p>
@@ -138,7 +160,12 @@ export function ChatView({
                 </div>
               )}
               {m.task && <TaskCard task={m.task} />}
-              {m.text && (m.role === "assistant" ? <Markdown text={m.text} /> : <p>{m.text}</p>)}
+              {m.text && (m.role === "assistant" ? <Markdown text={splitSuggestions(m.text).text} /> : <p>{m.text}</p>)}
+              {m.role === "user" && m.id === lastUserId && !busy && (
+                <button type="button" className="edit-button" title={t("island.editHint")} onClick={stop(onEditLast)}>
+                  ✎ {t("island.edit")}
+                </button>
+              )}
               {m.notices?.map((n, i) => (
                 <p key={`${n.kind}-${i}`} className="notice">
                   {t(`island.notice.${n.kind}`, { detail: n.detail })}
@@ -146,12 +173,27 @@ export function ChatView({
               ))}
               {m.role === "assistant" && m.text && !busy && (
                 <div className="message-actions">
-                  <CopyButton text={m.text} onCopied={onCopied} />
+                  <CopyButton text={splitSuggestions(m.text).text} onCopied={onCopied} />
                   {m.id === lastId && !m.task && !before(m)?.thumbnail && !before(m)?.capture && (
                     <button type="button" className="copy-button" onClick={stop(chat.regenerate)}>
                       ↻ {t("island.regenerate")}
                     </button>
                   )}
+                </div>
+              )}
+              {m.role === "assistant" && m.id === lastId && !busy && splitSuggestions(m.text).suggestions.length > 0 && (
+                <div className="follow-ups">
+                  {splitSuggestions(m.text).suggestions.map((idea, i) => (
+                    <button
+                      key={idea}
+                      type="button"
+                      className="follow-up"
+                      style={{ "--i": i } as React.CSSProperties}
+                      onClick={stop(() => onFollowUp(idea))}
+                    >
+                      {idea}
+                    </button>
+                  ))}
                 </div>
               )}
               {m.role === "assistant" && !m.text && !m.error && !m.task && busy && (
@@ -183,6 +225,15 @@ export function ChatView({
               )}
             </div>
           ))}
+        </div>
+        {!pinned && chat.messages.length > 0 && (
+          <button type="button" className="to-bottom" title={t("island.toBottom")} onClick={(e) => {
+              e.stopPropagation();
+              toBottom();
+            }}>
+            ↓
+          </button>
+        )}
         </div>
 
         <form
@@ -273,6 +324,12 @@ export function ChatView({
                     setDismissed(draft);
                     return;
                   }
+                }
+                // ↑ con el cuadro vacío: editar la última pregunta.
+                if (e.key === "ArrowUp" && !draft && !busy && lastUserId !== undefined) {
+                  e.preventDefault();
+                  onEditLast();
+                  return;
                 }
                 // Intro envía; Mayús+Intro hace salto de línea.
                 if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {

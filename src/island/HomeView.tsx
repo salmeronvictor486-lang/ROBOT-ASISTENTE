@@ -19,6 +19,8 @@ interface Props {
   onPickWorkspace: (id: string) => void;
   onEditWorkspaces: () => void;
   update: UpdateInfo | null;
+  /** Cómo se llama el usuario ("" si no lo sabemos). */
+  userName: string;
   onGetUpdate: (update: UpdateInfo) => void;
   onDismissUpdate: (update: UpdateInfo) => void;
   onScreen: () => void;
@@ -71,7 +73,7 @@ export function HomeView(props: Props) {
         )}
         <div className="hero-tico">{props.tico}</div>
         <div className="hero-text">
-          <h2>{t("island.greeting", { name: active.name })}</h2>
+          <h2>{props.userName ? t("island.greetingUser", { user: props.userName, name: active.name }) : t("island.greeting", { name: active.name })}</h2>
           <p>{t(ROLES[active.id] ?? "island.role.custom")}</p>
           {props.status && <p className="hero-status">{props.status}</p>}
         </div>

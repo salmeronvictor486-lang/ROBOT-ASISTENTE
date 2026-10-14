@@ -18,7 +18,7 @@ use crate::island::lock;
 use crate::settings::Settings;
 
 /// Versión del esquema. Cada cambio de tablas añade un paso en `migrate`.
-const SCHEMA_VERSION: i64 = 2;
+const SCHEMA_VERSION: i64 = 3;
 
 const SCHEMA_V1: &str = "
 CREATE TABLE IF NOT EXISTS settings (
@@ -56,6 +56,27 @@ CREATE TABLE IF NOT EXISTS contacts (
     last_used INTEGER NOT NULL
 );
 ";
+
+/// Versión 3: lo que el usuario pide recordar ("recuerda que…").
+const SCHEMA_V3: &str = "
+CREATE TABLE IF NOT EXISTS memories (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    text TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+);
+";
+
+/// Cosas que se recuerdan como mucho (las más nuevas).
+pub const MAX_MEMORIES: usize = 60;
+
+/// Algo que el usuario pidió recordar.
+#[derive(Clone, Debug, Serialize, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub struct Memory {
+    pub id: i64,
+    pub text: String,
+    pub created_at: i64,
+}
 
 fn now_ms() -> i64 {
     SystemTime::now()
@@ -301,6 +322,53 @@ impl Db {
         Ok(())
     }
 
+    // --- Memoria -------------------------------------------------------------------
+
+    /// Apunta algo para recordarlo (si ya estaba, no lo repite). Devuelve lo guardado.
+    pub fn add_memory(&self, text: &str) -> AppResult<Memory> {
+        let text: String = text.trim().trim_end_matches('.').trim().chars().take(300).collect();
+        if text.is_empty() {
+            return Err(AppError::Database("no hay nada que recordar".into()));
+        }
+        let conn = lock(&self.conn);
+        let existing: Option<Memory> = conn
+            .query_row(
+                "SELECT id, text, created_at FROM memories WHERE lower(text) = lower(?1)",
+                params![text],
+                |r| Ok(Memory { id: r.get(0)?, text: r.get(1)?, created_at: r.get(2)? }),
+            )
+            .optional()?;
+        if let Some(memory) = existing {
+            return Ok(memory);
+        }
+        let at = now_ms();
+        conn.execute("INSERT INTO memories (text, created_at) VALUES (?1, ?2)", params![text, at])?;
+        let id = conn.last_insert_rowid();
+        conn.execute(
+            "DELETE FROM memories WHERE id NOT IN (SELECT id FROM memories ORDER BY id DESC LIMIT ?1)",
+            params![i64::try_from(MAX_MEMORIES).unwrap_or(60)],
+        )?;
+        Ok(Memory { id, text, created_at: at })
+    }
+
+    /// Todo lo recordado, de lo más antiguo a lo más nuevo.
+    pub fn memories(&self) -> AppResult<Vec<Memory>> {
+        let conn = lock(&self.conn);
+        let mut stmt = conn.prepare("SELECT id, text, created_at FROM memories ORDER BY id")?;
+        let rows = stmt.query_map([], |r| Ok(Memory { id: r.get(0)?, text: r.get(1)?, created_at: r.get(2)? }))?;
+        Ok(rows.collect::<Result<Vec<_>, _>>()?)
+    }
+
+    pub fn delete_memory(&self, id: i64) -> AppResult<()> {
+        lock(&self.conn).execute("DELETE FROM memories WHERE id = ?1", params![id])?;
+        Ok(())
+    }
+
+    pub fn clear_memories(&self) -> AppResult<()> {
+        lock(&self.conn).execute("DELETE FROM memories", [])?;
+        Ok(())
+    }
+
     // --- Contactos ------------------------------------------------------------------
 
     /// Apunta las direcciones a las que se ha enviado un correo.
@@ -367,6 +435,9 @@ fn migrate(conn: &Connection) -> AppResult<()> {
     if version < 2 {
         conn.execute_batch(SCHEMA_V2)?;
     }
+    if version < 3 {
+        conn.execute_batch(SCHEMA_V3)?;
+    }
     conn.execute_batch(&format!("PRAGMA user_version = {SCHEMA_VERSION}"))?;
     Ok(())
 }
@@ -426,6 +497,21 @@ mod tests {
     }
 
     #[test]
+    fn memories_are_kept_without_repeats() {
+        let db = Db::in_memory();
+        let first = db.add_memory("  Vivo en Barcelona. ").unwrap();
+        assert_eq!(first.text, "Vivo en Barcelona");
+        assert_eq!(db.add_memory("vivo en barcelona").unwrap().id, first.id);
+        db.add_memory("Me gusta el café solo").unwrap();
+        assert_eq!(db.memories().unwrap().len(), 2);
+        assert!(db.add_memory("   ").is_err());
+        db.delete_memory(first.id).unwrap();
+        assert_eq!(db.memories().unwrap()[0].text, "Me gusta el café solo");
+        db.clear_memories().unwrap();
+        assert!(db.memories().unwrap().is_empty());
+    }
+
+    #[test]
     fn contacts_are_counted() {
         let db = Db::in_memory();
         db.remember_contacts(&["ana@ejemplo.com".into(), "luis@ejemplo.com".into()]).unwrap();
@@ -440,7 +526,7 @@ mod tests {
         conn.execute_batch("PRAGMA user_version = 1").unwrap();
         let conn = Db::prepare(conn).unwrap();
         let version: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0)).unwrap();
-        assert_eq!(version, 2);
+        assert_eq!(version, SCHEMA_VERSION);
         conn.execute("INSERT INTO contacts (address, last_used) VALUES ('a@b.c', 0)", []).unwrap();
     }
 

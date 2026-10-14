@@ -84,6 +84,16 @@ pub fn answer(language: &str, request: &ChatRequest) -> String {
     } else {
         "Con una IA de verdad podría:\n1. Explicarte qué hay en tu pantalla.\n2. Resumir o traducir tus archivos.\n3. Escribir y corregir textos y código.\n\nConecta una en **Ajustes → Inteligencia artificial**: Gemini y Groq tienen claves gratis, y Ollama funciona en tu ordenador gratis."
     });
+    // Si la app quiere ideas para seguir, el demo también las da (así se ven los botones).
+    if request.system.contains(super::SUGGESTIONS_TAG) {
+        out.push_str(if en {
+            "\n<<next: What's on my screen? | Remember that I like short answers | Pause the music>>"
+        } else if ca {
+            "\n<<next: Què veus a la meva pantalla? | Recorda que m'agraden les respostes curtes | Pausa la música>>"
+        } else {
+            "\n<<next: ¿Qué ves en mi pantalla? | Recuerda que me gustan las respuestas cortas | Pausa la música>>"
+        });
+    }
     out
 }
 

@@ -168,6 +168,22 @@ function HelloStep({ settings, save }: { settings: Settings; save: (p: Partial<S
         <li>{t("welcome.hello.f2")}</li>
         <li>{t("welcome.hello.f3")}</li>
       </ul>
+      <label className="field name-field">
+        <span>{t("welcome.hello.name")}</span>
+        <input
+          type="text"
+          defaultValue={settings.userName}
+          placeholder="Victor"
+          maxLength={60}
+          onBlur={(e) => {
+            const userName = e.target.value.trim();
+            if (userName !== settings.userName) save({ userName });
+          }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
+        />
+      </label>
       <div className="field">
         <span>{t("settings.language")}</span>
         <div className="chips" role="radiogroup">

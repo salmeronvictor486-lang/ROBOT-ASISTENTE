@@ -63,6 +63,10 @@ export interface ChatApi {
   retry: (replyId: number) => void;
   /** Pide otra respuesta a la última pregunta. */
   regenerate: () => void;
+  /** Quita la última pregunta (y su respuesta) y la devuelve para editarla. */
+  editLast: () => { text: string; files?: FileInfo[] } | null;
+  /** Pregunta y respuesta que resuelve Tico solo, sin IA ("recuerda que…"). */
+  local: (userText: string, reply: string) => void;
   /** ¿Tiene conversación este Tico en el espacio activo? */
   hasMessages: (tico: string) => boolean;
 }
@@ -332,6 +336,32 @@ export function useChat(ticoId: string, workspaceId: string, lang: string): Chat
     }
   }, [current, drop, send, ticoId, workspaceId]);
 
+  const editLast = useCallback(() => {
+    const list = byTicoRef.current[current] ?? [];
+    const index = list.map((m) => m.role).lastIndexOf("user");
+    const question = list[index];
+    if (index < 0 || !question || list.length - index > 2) return null;
+    const answer = list[index + 1];
+    drop([question.id, ...(answer ? [answer.id] : [])]);
+    // Si hubo respuesta, Rust también la olvida (en memoria y en la base de datos).
+    if (answer && answer.text && !answer.error && !answer.task && isTauri()) {
+      void api.chatForgetLast(workspaceId, ticoId).catch(console.error);
+    }
+    return { text: question.text, ...(question.files?.length ? { files: question.files } : {}) };
+  }, [current, drop, ticoId, workspaceId]);
+
+  const local = useCallback(
+    (userText: string, reply: string) => {
+      append(
+        current,
+        { id: nextId.current++, role: "user", text: userText },
+        { id: nextId.current++, role: "assistant", text: reply },
+      );
+      setDoneAt(Date.now());
+    },
+    [append, current],
+  );
+
   const hasMessages = useCallback(
     (tico: string) => (byTico[chatKey(workspaceId, tico)]?.length ?? 0) > 0,
     [byTico, workspaceId],
@@ -352,6 +382,8 @@ export function useChat(ticoId: string, workspaceId: string, lang: string): Chat
     finishTask,
     retry,
     regenerate,
+    editLast,
+    local,
     hasMessages,
   };
 }

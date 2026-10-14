@@ -233,6 +233,21 @@ h1 {
   font-size: 12.5px;
 }
 
+.name-field {
+  margin-bottom: 14px;
+}
+
+.name-field input {
+  max-width: 280px;
+  padding: 9px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--text);
+  font: inherit;
+  user-select: text;
+}
+
 .chips {
   display: flex;
   flex-wrap: wrap;

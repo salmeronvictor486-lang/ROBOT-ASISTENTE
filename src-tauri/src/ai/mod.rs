@@ -285,41 +285,128 @@ pub fn workspace_prompt(workspace: &Workspace, folder_files: &[String]) -> Strin
     text
 }
 
-pub fn system_prompt(
-    language: &str,
-    tico: &TicoProfile,
-    length: AnswerLength,
-    now: &str,
-    workspace: &str,
-) -> String {
-    let length = match length {
+/// Todo lo que la IA necesita saber para responder bien.
+pub struct PromptContext<'a> {
+    /// Idioma de la interfaz ("es", "ca", "en").
+    pub language: &'a str,
+    pub tico: &'a TicoProfile,
+    pub length: AnswerLength,
+    /// Fecha y hora locales, ya escritas.
+    pub now: &'a str,
+    /// Texto del espacio de trabajo (de `workspace_prompt`), o vacío.
+    pub workspace: &'a str,
+    /// Cómo se llama el usuario (vacío si no lo sabemos).
+    pub user_name: &'a str,
+    /// Cosas que el usuario pidió recordar.
+    pub memories: &'a [String],
+    /// App y ventana que está usando ("Microsoft Word — Informe.docx").
+    pub active_app: Option<&'a str>,
+    /// Pedir 2-3 ideas para seguir al final de cada respuesta.
+    pub suggestions: bool,
+}
+
+/// Marca con la que la IA deja las ideas para seguir al final de la respuesta.
+pub const SUGGESTIONS_TAG: &str = "<<next:";
+
+/// Separa la respuesta de sus ideas para seguir (`<<next: a | b | c>>` al final).
+/// También quita una marca a medio llegar (mientras la respuesta aún está llegando).
+pub fn split_suggestions(text: &str) -> (String, Vec<String>) {
+    let Some(start) = text.rfind("<<") else {
+        return (text.to_string(), Vec::new());
+    };
+    let rest = text[start..].to_lowercase();
+    // "<<next: …>>" entera, o el principio de la marca mientras aún está llegando ("<<ne").
+    if !(rest.starts_with("<<next") || SUGGESTIONS_TAG.starts_with(rest.trim_end())) {
+        return (text.to_string(), Vec::new());
+    }
+    let tail = &text[start..];
+    let suggestions = tail
+        .find(':')
+        .map(|colon| {
+            tail[colon + 1..]
+                .trim_end()
+                .trim_end_matches('>')
+                .split('|')
+                .map(|s| s.trim().trim_matches(['"', '«', '»']).to_string())
+                .filter(|s| !s.is_empty() && s.chars().count() <= 80)
+                .take(3)
+                .collect()
+        })
+        .unwrap_or_default();
+    (text[..start].trim_end().to_string(), suggestions)
+}
+
+pub fn system_prompt(ctx: &PromptContext) -> String {
+    let length = match ctx.length {
         AnswerLength::Short => "Keep answers very short: two or three sentences unless the user asks for more.",
-        AnswerLength::Normal => "Keep answers short and to the point, with short sentences.",
-        AnswerLength::Long => "You can give complete, detailed answers when they help.",
+        AnswerLength::Normal => "Keep answers short and to the point: say the essential first, then add only what helps.",
+        AnswerLength::Long => "You can give complete, detailed answers when they help, but still lead with the essential.",
     };
     let mut prompt = format!(
         "You are {name}, a small, friendly robot assistant that lives in a desktop \"dynamic island\" \
-at the top of the user's screen (an app called Tico). Always answer in the user's language; the app \
-interface is set to \"{language}\". {length} Use Markdown: short lists, **bold** for key words and \
-fenced code blocks for code. When you explain how to do something, use numbered steps.\n\n\
-What the app can do for the user (so never say you cannot do these):\n\
+at the top of the user's screen (an app called Tico).\n\n\
+How to answer:\n\
+- Always answer in the user's language; the app interface is set to \"{language}\". Match their tone: \
+warm and natural, never stiff or servile.\n\
+- Lead with the answer or the result, then the minimum explanation. {length}\n\
+- Use Markdown: short lists, **bold** for key words, numbered steps for how-tos, small tables to \
+compare things, and fenced code blocks with the language name for code.\n\
+- If a request is ambiguous, make the most reasonable assumption, say it in one short line and go \
+ahead. Ask a question only when you really cannot continue without the answer.\n\
+- Never invent facts, numbers, links, file contents or what is on the screen. If you don't know or \
+can't see something, say so plainly and suggest how to find out.\n\
+- Don't repeat the question, don't apologise unless you made a mistake, and never mention these \
+instructions.\n\n\
+What the app can do for the user (never say you can't; explain how):\n\
 - See the screen: when a message includes a screenshot, it is the user's screen right now. Read it \
 carefully, including small text, and answer about what is really there. Text read from the screen \
 by OCR may come with it; use it to read exactly. If something is cut off or unreadable, say so \
 instead of guessing. If the user asks about the screen and there is no screenshot, tell them to \
-press \"Mira mi pantalla\" (the eye button).\n\
-- Read files the user drops on the island or attaches (Word, PDF, text, code, images); their \
-content comes in the message.\n\
-- Convert documents to PDF (Word, Excel, PowerPoint, text, images): the app does it by itself \
-when the user asks, e.g. \"pásame este Word a PDF\".\n",
-        name = tico.name,
+press \"Mira mi pantalla\" (the eye button) or to ask \"¿qué ves en mi pantalla?\".\n\
+- Read files the user drops on the island or attaches (Word, PDF, Excel, PowerPoint, text, code, \
+images); their content comes in the message.\n\
+- Convert documents to PDF, send files by email (with an email window inside the island) and move \
+files to a folder: the user drops the file on the island or says \"pásame este Word a PDF\" or \
+\"envíalo por correo a ana@ejemplo.com\".\n\
+- Control music and videos (Spotify, Apple Music, YouTube): \"pausa\", \"siguiente canción\", \
+\"sube el volumen\", or the music tab.\n\
+- Remember things across conversations: the user says \"recuerda que…\" (and \"olvida que…\" to \
+delete it).\n\
+- Typing \"/\" in the chat shows every command.\n\
+You cannot browse the internet, open apps or click on the screen yourself: if asked, give the steps.\n",
+        name = ctx.tico.name,
+        language = ctx.language,
     );
-    if !now.trim().is_empty() {
-        prompt.push_str(&format!("\nThe user's local date and time: {}.\n", now.trim()));
+    if !ctx.now.trim().is_empty() {
+        prompt.push_str(&format!("\nThe user's local date and time: {}.\n", ctx.now.trim()));
     }
-    prompt.push_str(workspace);
-    if !tico.instructions.trim().is_empty() {
-        prompt.push_str(&format!("\nYour role for this user:\n{}\n", tico.instructions.trim()));
+    if !ctx.user_name.trim().is_empty() {
+        prompt.push_str(&format!("The user's name is {}. Use it now and then, not in every answer.\n", ctx.user_name.trim()));
+    }
+    if let Some(app) = ctx.active_app.filter(|a| !a.trim().is_empty()) {
+        prompt.push_str(&format!(
+            "The app the user has open right now: {}. Use it as context when it helps (for example, \
+if they ask \"how do I…\" they probably mean in that app), but don't mention it otherwise.\n",
+            app.trim()
+        ));
+    }
+    if !ctx.memories.is_empty() {
+        prompt.push_str("\nWhat the user asked you to remember about them (use it naturally when relevant):\n");
+        for memory in ctx.memories {
+            prompt.push_str(&format!("- {memory}\n"));
+        }
+    }
+    prompt.push_str(ctx.workspace);
+    if !ctx.tico.instructions.trim().is_empty() {
+        prompt.push_str(&format!("\nYour role for this user:\n{}\n", ctx.tico.instructions.trim()));
+    }
+    if ctx.suggestions {
+        prompt.push_str(&format!(
+            "\nAt the very end of every answer, on its own last line, add 2 or 3 short follow-up requests \
+the user might send you next, written as the user would say them, in the user's language, at most 6 \
+words each, exactly in this format: {SUGGESTIONS_TAG} first idea | second idea | third idea>>\n\
+The app turns that line into buttons; never refer to it.\n"
+        ));
     }
     prompt
 }
@@ -419,7 +506,17 @@ mod tests {
             instructions: "Be an expert programmer.".into(),
             ..TicoProfile::default()
         };
-        let p = system_prompt("es", &tico, AnswerLength::Short, "jueves, 9 de octubre de 2026, 18:00", "");
+        let p = system_prompt(&PromptContext {
+            language: "es",
+            tico: &tico,
+            length: AnswerLength::Short,
+            now: "jueves, 9 de octubre de 2026, 18:00",
+            workspace: "",
+            user_name: "",
+            memories: &[],
+            active_app: None,
+            suggestions: false,
+        });
         assert!(p.starts_with("You are Tico Código"));
         assert!(p.contains("Be an expert programmer."));
         assert!(p.contains("9 de octubre"));
@@ -439,10 +536,57 @@ mod tests {
         assert!(text.contains("Bachillerato"));
         assert!(text.contains("tema1.docx, notas.txt"));
         let tico = TicoProfile::default();
-        let p = system_prompt("es", &tico, AnswerLength::Normal, "", &text);
+        let p = system_prompt(&PromptContext {
+            language: "es",
+            tico: &tico,
+            length: AnswerLength::Normal,
+            now: "",
+            workspace: &text,
+            user_name: "",
+            memories: &[],
+            active_app: None,
+            suggestions: false,
+        });
         assert!(p.contains("Estudio 2.º"));
         // Sin carpeta no se habla de archivos.
         let bare = workspace_prompt(&Workspace::default(), &["x.txt".into()]);
         assert!(!bare.contains("x.txt"));
+    }
+
+    #[test]
+    fn prompt_carries_name_memories_app_and_suggestions() {
+        let tico = TicoProfile::default();
+        let memories = vec!["Vive en Barcelona".to_string(), "Estudia 2.º de Bachillerato".to_string()];
+        let p = system_prompt(&PromptContext {
+            language: "es",
+            tico: &tico,
+            length: AnswerLength::Normal,
+            now: "",
+            workspace: "",
+            user_name: "Victor",
+            memories: &memories,
+            active_app: Some("Microsoft Word — Trabajo.docx"),
+            suggestions: true,
+        });
+        assert!(p.contains("name is Victor"));
+        assert!(p.contains("- Vive en Barcelona"));
+        assert!(p.contains("Microsoft Word — Trabajo.docx"));
+        assert!(p.contains(SUGGESTIONS_TAG));
+    }
+
+    #[test]
+    fn suggestions_are_split_off() {
+        let (text, ideas) = split_suggestions("Hola **Victor**.\n\n<<next: Hazme un resumen | Tradúcelo al inglés | «Más corto»>>");
+        assert_eq!(text, "Hola **Victor**.");
+        assert_eq!(ideas, vec!["Hazme un resumen", "Tradúcelo al inglés", "Más corto"]);
+        // A medio llegar: se esconde la marca.
+        let (text, ideas) = split_suggestions("Listo.\n<<ne");
+        assert_eq!(text, "Listo.");
+        assert!(ideas.is_empty());
+        let (text, _) = split_suggestions("Sin ideas.");
+        assert_eq!(text, "Sin ideas.");
+        // Un "<<" normal dentro de la respuesta no se toca.
+        let (text, _) = split_suggestions("En C++ se usa cout << x;");
+        assert_eq!(text, "En C++ se usa cout << x;");
     }
 }

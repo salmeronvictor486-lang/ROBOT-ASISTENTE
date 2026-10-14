@@ -19,7 +19,7 @@ import { Header, type Tab } from "./Header";
 import { HomeView } from "./HomeView";
 import type { Command } from "./commands";
 import type { Suggestion } from "./ChatView";
-import { emailsIn, mediaIntent, wantsMail, wantsPdf, wantsScreen } from "./intents";
+import { emailsIn, findMemory, mediaIntent, memoryIntent, wantsMail, wantsPdf, wantsScreen, type MemoryIntent } from "./intents";
 import { Artwork, MediaView, PauseIcon, PlayIcon } from "./MediaView";
 import { useNowPlaying } from "./useNowPlaying";
 import { MailSheet } from "./MailSheet";
@@ -407,8 +407,9 @@ function Island({ settings }: { settings: Settings }) {
     [capturing, chat, draft, files, focusInput, sendMessage, settings.captureConfirm, t],
   );
 
-  const send = () => {
-    const text = draft.trim() || (pendingCapture ? t("island.defaultQuestion") : "");
+  /** Envía lo escrito (o `override`: una idea pulsada) pasando antes por lo que Tico hace solo. */
+  const send = (override?: string) => {
+    const text = (override ?? draft).trim() || (pendingCapture ? t("island.defaultQuestion") : "");
     if (!text && files.length === 0) return;
     const message = text || t("island.prompt.summary");
     // "Pásame este Word a PDF": lo hacemos nosotros, sin IA.
@@ -418,6 +419,14 @@ function Island({ settings }: { settings: Settings }) {
       const docs = files.filter((f) => f.canConvert);
       if (docs.length) void convertFiles(docs, message);
       else void convertActiveDocument(message);
+      return;
+    }
+    // "Recuerda que…", "olvida que…", "¿qué recuerdas de mí?": lo resuelve Tico solo.
+    const memoryOrder = !pendingCapture && files.length === 0 ? memoryIntent(message) : null;
+    if (memoryOrder) {
+      setDraft("");
+      setTab("chat");
+      void handleMemory(message, memoryOrder);
       return;
     }
     // "Pausa la música", "siguiente canción", "sube el volumen": sin IA.
@@ -445,6 +454,47 @@ function Island({ settings }: { settings: Settings }) {
       return;
     }
     sendMessage(message, pendingCapture, files);
+  };
+
+  // --- Memoria -----------------------------------------------------------------------
+
+  const handleMemory = async (said: string, order: MemoryIntent) => {
+    if (!isTauri()) return;
+    try {
+      if (order.kind === "remember") {
+        const memory = await api.memoryAdd(order.text);
+        chat.local(said, t("memory.saved", { text: memory.text }));
+        playEmote("love", 1800);
+      } else if (order.kind === "forget") {
+        const found = findMemory(await api.memoryList(), order.text);
+        if (found) {
+          await api.memoryDelete(found.id);
+          chat.local(said, t("memory.forgotten", { text: found.text }));
+        } else {
+          chat.local(said, t("memory.notFound"));
+        }
+        playEmote("wink", 1400);
+      } else {
+        const list = await api.memoryList();
+        chat.local(
+          said,
+          list.length ? `${t("memory.list")}\n\n${list.map((m) => `- ${m.text}`).join("\n")}` : t("memory.empty"),
+        );
+      }
+      sound("done");
+    } catch (e) {
+      chat.notify(toAppError(e));
+    }
+  };
+
+  /** Pone la última pregunta en el cuadro para cambiarla y volver a enviarla. */
+  const editLast = () => {
+    const last = chat.editLast();
+    if (!last) return;
+    setDraft(last.text);
+    if (last.files?.length) addFiles(last.files);
+    setTab("chat");
+    focusInput();
   };
 
   // --- Mover y enviar por correo ------------------------------------------------------
@@ -547,6 +597,8 @@ function Island({ settings }: { settings: Settings }) {
         slug: w.name.toLowerCase().replace(/\s+/g, "-"),
         run: () => pickWorkspace(w.id),
       })),
+    { ...meta("remember", "🧠"), run: () => prefill(t("command.remember.prefix")) },
+    { ...meta("memory", "📒"), run: () => void handleMemory(t("command.memory"), { kind: "list" }) },
     { ...meta("music", "🎵"), run: () => setTab("media") },
     { ...meta("pause", "⏯"), run: () => media.control("playPause") },
     { ...meta("nextTrack", "⏭"), run: () => media.control("next") },
@@ -829,6 +881,7 @@ function Island({ settings }: { settings: Settings }) {
           onPickWorkspace={pickWorkspace}
           onEditWorkspaces={() => void api.openSettings("workspaces").catch(console.error)}
           update={shownUpdate}
+          userName={settings.userName}
           onGetUpdate={(u) => void api.openUrl(u.url).catch(console.error)}
           onDismissUpdate={(u) => dismissUpdate(u.version)}
           seasonal={settings.seasonalOutfits}
@@ -885,7 +938,9 @@ function Island({ settings }: { settings: Settings }) {
           files={files}
           onRemoveFile={removeFile}
           canSendEmpty={pendingCapture !== null || files.length > 0}
-          onSend={send}
+          onSend={() => send()}
+          onFollowUp={(idea) => send(idea)}
+          onEditLast={editLast}
           onAttach={() => void pickFiles()}
           onLookAtScreen={() => void lookAtScreen()}
           lookDisabled={capturing || !isTauri()}
