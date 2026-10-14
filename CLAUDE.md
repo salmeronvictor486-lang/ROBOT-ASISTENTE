@@ -16,9 +16,9 @@ usuario lo pide, mira la pantalla para ayudar. El documento de diseño completo 
 - Prohibido copiar código, sonidos o la mascota de coucou (Mochi). Tico es un diseño propio.
 
 ## Fase actual
-**Versión 1.1.0**. Fases 0-6 hechas, la 1.0 (varios Ticos, 12 servicios de IA, OCR,
-archivos, Word → PDF e interfaz nueva con pestañas) y la 1.1: espacios de trabajo y base
-de datos local (SQLite) con ajustes, conversaciones y PDF convertidos.
+**Versión 1.2.0**. Fases 0-6 hechas, la 1.0 (varios Ticos, 12 servicios de IA, OCR,
+archivos, Word → PDF e interfaz nueva con pestañas), la 1.1 (espacios de trabajo, base de
+datos local, bienvenida, correo) y la 1.2: música y vídeo, Linux, memoria y respuestas mejores.
 Pendiente: que Victor pruebe en Windows (y en un Mac si puede) y corregir lo que falle.
 
 | Fase | Contenido | Estado |
@@ -256,6 +256,17 @@ src-tauri/src/
 40. **Linux (1.2)**: AppImage y .deb hechos en Ubuntu 22.04 (glibc antigua = arranca en más
     distribuciones). Con Wayland, `main.rs` pone `GDK_BACKEND=x11` para que la isla pueda
     colocarse y quedar encima (XWayland). Sin OCR en Linux.
+41. **Respuestas e interacción (1.2)**: `system_prompt` recibe un `PromptContext` (idioma,
+    Tico, largo, fecha, espacio, nombre del usuario, memorias, app activa e ideas). Reglas: ir
+    al grano, suponer lo razonable en vez de preguntar, no inventar, conocer todas las funciones
+    de la app. La app activa (`active_app_context`) se omite si es una app bloqueada. Las ideas
+    para seguir llegan al final como `<<next: a | b | c>>`: el frontend las quita del texto
+    (`splitSuggestions`, también a medio llegar) y las pinta como botones; Rust las quita antes
+    de guardar en el historial (`split_suggestions`). Memoria: tabla `memories` (esquema v3),
+    «recuerda que…» / «olvida que…» / «¿qué recuerdas de mí?» se resuelven sin IA
+    (`memoryIntent`, `chat.local`). ↑ con el cuadro vacío edita la última pregunta
+    (`editLast` + `chat_forget_last`). Markdown con enlaces (se abren con `open_url`), tablas
+    y código con lenguaje y botón de copiar. El chat solo baja solo si ya estabas abajo.
 
 ## Anuncio (`promo/`)
 `promo.html` + `src/promo/` dibujan el anuncio de 35 s con los componentes reales (Tico,

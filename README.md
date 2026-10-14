@@ -14,10 +14,16 @@ chatea contigo y, solo cuando tú se lo pides, mira tu pantalla para ayudarte.
 
 ## Qué hace
 
-**Versión 1.1**
+**Versión 1.2**
 
 - **Bienvenida en un minuto**: la primera vez, Tico te guía para elegir IA (las gratis,
   destacadas), pegar y probar la clave y aprender a llamarlo.
+- **Te conoce y responde mejor**: dile «recuerda que estudio Derecho» y lo tendrá en cuenta en
+  todas las conversaciones («olvida que…» lo borra; «¿qué recuerdas de mí?» te lo enseña). Te
+  llama por tu nombre, sabe qué app tienes delante (nunca las bloqueadas) para entender a qué
+  te refieres, va al grano, no se inventa nada y al final de cada respuesta te propone 2 o 3
+  cosas para seguir con un clic. Las respuestas traen tablas, enlaces que se abren y código
+  con botón de copiar. Con ↑ (o «Editar») cambias tu última pregunta y la vuelves a enviar.
 - **Chat como en las grandes apps**: escribe `/` y sale una paleta de comandos (mirar la
   pantalla, pasar a PDF, traducir, mejorar un texto, hablar con otro Tico, cambiar de
   espacio…); con el chat vacío te propone ideas según el Tico; si algo falla tienes

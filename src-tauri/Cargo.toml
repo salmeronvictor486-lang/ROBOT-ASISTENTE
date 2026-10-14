@@ -1,6 +1,6 @@
 [package]
 name = "tico"
-version = "1.1.0"
+version = "1.2.0"
 description = "Isla dinámica de escritorio con Tico, un robot asistente"
 authors = ["Victor"]
 license = "MIT"
