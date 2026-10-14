@@ -117,6 +117,14 @@ export const IconOpen = () => (
   </svg>
 );
 
+export const IconMusic = () => (
+  <svg {...common}>
+    <path d="M6 12.5V4l7-1.5V11" />
+    <circle cx="4.5" cy="12.5" r="1.8" />
+    <circle cx="11.5" cy="11" r="1.8" />
+  </svg>
+);
+
 export const IconSparkle = () => (
   <svg {...common}>
     <path d="M8 2.5l1.3 3.4 3.4 1.3-3.4 1.3L8 11.9 6.7 8.5 3.3 7.2l3.4-1.3zM12.5 11l.5 1.3 1.3.5-1.3.5-.5 1.3-.5-1.3-1.3-.5 1.3-.5z" />

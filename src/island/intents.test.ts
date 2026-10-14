@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emailsIn, wantsMail, wantsPdf, wantsScreen } from "./intents";
+import { emailsIn, mediaIntent, wantsMail, wantsPdf, wantsScreen } from "./intents";
 
 describe("wantsPdf", () => {
   it.each([
@@ -63,4 +63,28 @@ describe("wantsMail", () => {
   it("saca las direcciones", () => {
     expect(emailsIn("a ana@x.com, ana@x.com y luis.p+tico@sub.y.es")).toEqual(["ana@x.com", "luis.p+tico@sub.y.es"]);
   });
+});
+
+describe("mediaIntent", () => {
+  it.each([
+    ["pausa la música", "playPause"],
+    ["Pausa", "playPause"],
+    ["reanuda la canción", "playPause"],
+    ["siguiente canción", "next"],
+    ["pasa a la siguiente", "next"],
+    ["salta este vídeo", "next"],
+    ["la canción anterior", "previous"],
+    ["sube el volumen", "volumeUp"],
+    ["baja el volumen!", "volumeDown"],
+    ["next song", "next"],
+    ["pause the music", "playPause"],
+    ["silencio", "mute"],
+  ])("%s → %s", (text, intent) => expect(mediaIntent(text)).toBe(intent));
+
+  it.each([
+    "¿cuál es la siguiente canción del disco de Rosalía?",
+    "escríbeme la letra de la canción anterior que te pedí",
+    "para qué sirve el volumen de un cilindro",
+    "siguiente paso",
+  ])("no: %s", (text) => expect(mediaIntent(text)).toBeNull());
 });

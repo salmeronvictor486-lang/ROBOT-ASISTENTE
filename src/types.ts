@@ -217,6 +217,19 @@ export interface MailStatus {
   helpUrl: string | null;
 }
 
+/** Lo que suena ahora (`NowPlaying` en Rust). */
+export interface NowPlaying {
+  app: string;
+  title: string;
+  artist: string;
+  album: string;
+  playing: boolean;
+  /** Portada como data URL (o null). */
+  artwork: string | null;
+}
+
+export type MediaAction = "playPause" | "next" | "previous";
+
 /** Un correo para enviar (`MailDraft` en Rust). */
 export interface MailDraft {
   to: string;

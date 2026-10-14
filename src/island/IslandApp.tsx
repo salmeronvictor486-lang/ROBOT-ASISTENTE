@@ -19,7 +19,9 @@ import { Header, type Tab } from "./Header";
 import { HomeView } from "./HomeView";
 import type { Command } from "./commands";
 import type { Suggestion } from "./ChatView";
-import { emailsIn, wantsMail, wantsPdf, wantsScreen } from "./intents";
+import { emailsIn, mediaIntent, wantsMail, wantsPdf, wantsScreen } from "./intents";
+import { Artwork, MediaView, PauseIcon, PlayIcon } from "./MediaView";
+import { useNowPlaying } from "./useNowPlaying";
 import { MailSheet } from "./MailSheet";
 import { useDroppedFiles } from "./useDroppedFiles";
 import { initialIsland, islandReducer, shouldAutoHide } from "./machine";
@@ -129,6 +131,17 @@ function Island({ settings }: { settings: Settings }) {
 
   /** Aviso corto cuando Tico cambia de espacio solo ("Espacio: Programar"). */
   const [wsNotice, setWsNotice] = useState<string | null>(null);
+  // Lo que suena (solo se pregunta con la isla a la vista).
+  const media = useNowPlaying(ctx.state !== "hidden");
+  // Con música sonando y la pestaña abierta, Tico baila (un "toque" cada ~0,5 s).
+  const [beat, setBeat] = useState(0);
+  const dancing = tab === "media" && ctx.state === "expanded" && Boolean(media.now?.playing);
+  useEffect(() => {
+    if (!dancing) return;
+    const id = window.setInterval(() => setBeat((b) => b + 1), 520);
+    return () => window.clearInterval(id);
+  }, [dancing]);
+
   /** Correo que se está escribiendo (con sus adjuntos), o `null`. */
   const [compose, setCompose] = useState<{ files: FileInfo[]; to?: string } | null>(null);
   /** Aviso corto tras una acción ("✉️ Enviado a ana@…", "📁 Movido a Clase"). */
@@ -407,6 +420,18 @@ function Island({ settings }: { settings: Settings }) {
       else void convertActiveDocument(message);
       return;
     }
+    // "Pausa la música", "siguiente canción", "sube el volumen": sin IA.
+    const mediaOrder = !pendingCapture && files.length === 0 ? mediaIntent(message) : null;
+    if (mediaOrder) {
+      setDraft("");
+      if (mediaOrder === "volumeUp") media.nudgeVolume(0.1);
+      else if (mediaOrder === "volumeDown") media.nudgeVolume(-0.1);
+      else if (mediaOrder === "mute") media.nudgeVolume("mute");
+      else media.control(mediaOrder);
+      setFlash(t(`media.done.${mediaOrder}`));
+      playEmote("wink", 1200);
+      return;
+    }
     // "Envíalo por correo a ana@x.com" con archivos adjuntos: abrimos el correo.
     if (files.length > 0 && wantsMail(message)) {
       setDraft("");
@@ -522,6 +547,10 @@ function Island({ settings }: { settings: Settings }) {
         slug: w.name.toLowerCase().replace(/\s+/g, "-"),
         run: () => pickWorkspace(w.id),
       })),
+    { ...meta("music", "🎵"), run: () => setTab("media") },
+    { ...meta("pause", "⏯"), run: () => media.control("playPause") },
+    { ...meta("nextTrack", "⏭"), run: () => media.control("next") },
+    { ...meta("previousTrack", "⏮"), run: () => media.control("previous") },
     { ...meta("settings", "⚙️"), run: () => void api.openSettings().catch(console.error) },
   ];
 
@@ -593,7 +622,7 @@ function Island({ settings }: { settings: Settings }) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") dispatch({ type: "escape" });
-      const tabs: Record<string, Tab> = { "1": "home", "2": "chat", "3": "files" };
+      const tabs: Record<string, Tab> = { "1": "home", "2": "chat", "3": "files", "4": "media" };
       const next = tabs[e.key];
       if ((e.ctrlKey || e.metaKey) && next) {
         e.preventDefault();
@@ -701,7 +730,7 @@ function Island({ settings }: { settings: Settings }) {
         baseColor={active.baseColor}
         accentColor={active.accentColor}
         expression={expression}
-        bounce={chat.tokens}
+        bounce={chat.tokens + beat}
         shake={shake}
         wave={wave}
         outfit={outfit}
@@ -724,6 +753,8 @@ function Island({ settings }: { settings: Settings }) {
   else if (chat.messages.length > 0) status = t("island.conversationOpen");
 
   const busy = capturing || chat.phase !== "idle" || converting > 0;
+  // En compacto, si suena algo y Tico no está ocupado ni avisando, sale el mini reproductor.
+  const miniPlayer = media.now && !busy && !flash && !wsNotice && !protestText && !showError ? media.now : null;
   // Con notch, todo el contenido va por debajo de él (contentTop) o a sus lados (orejas).
   const box = {
     width: geometry.width,
@@ -759,8 +790,29 @@ function Island({ settings }: { settings: Settings }) {
     content = (
       <div className="content content-compact" style={box} key="compact">
         {tico(notch ? 40 : 44)}
-        <span className="status-line">{status}</span>
-        {ticoChip}
+        {miniPlayer ? (
+          <span className="mini-player">
+            <Artwork src={miniPlayer.artwork} size={30} />
+            <span className="mini-text">
+              <b>{miniPlayer.title}</b>
+              <small>{miniPlayer.artist || miniPlayer.app}</small>
+            </span>
+            <button
+              type="button"
+              className="mini-play"
+              title={miniPlayer.playing ? t("media.pause") : t("media.play")}
+              onClick={(e) => {
+                e.stopPropagation();
+                media.control("playPause");
+              }}
+            >
+              {miniPlayer.playing ? <PauseIcon size={16} /> : <PlayIcon size={16} />}
+            </button>
+          </span>
+        ) : (
+          <span className="status-line">{status}</span>
+        )}
+        {!miniPlayer && ticoChip}
         <ActivityIndicator busy={busy} error={showError} />
       </div>
     );
@@ -793,6 +845,8 @@ function Island({ settings }: { settings: Settings }) {
           }}
         />
       );
+    } else if (tab === "media") {
+      view = <MediaView tico={tico(media.now?.playing ? 70 : 84)} media={media} />;
     } else if (tab === "files") {
       view = (
         <FilesView
@@ -859,6 +913,7 @@ function Island({ settings }: { settings: Settings }) {
           onCollapse={() => dispatch({ type: "collapse" })}
           onClose={() => dispatch({ type: "escape" })}
           fileCount={files.length}
+          mediaPlaying={Boolean(media.now?.playing)}
         />
         {compose ? (
           <div className="tab-body" key="mail">

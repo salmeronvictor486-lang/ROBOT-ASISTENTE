@@ -91,3 +91,32 @@ export function wantsMail(text: string): boolean {
   if (!sends) return false;
   return hasAddress || MAIL_WORDS.test(t);
 }
+
+export type MediaIntent = "playPause" | "next" | "previous" | "volumeUp" | "volumeDown" | "mute";
+
+/**
+ * Órdenes de música cortas ("pausa la música", "siguiente canción", "sube el volumen").
+ * Solo frases cortas: "¿qué canción es la siguiente del disco?" no es una orden.
+ */
+export function mediaIntent(text: string): MediaIntent | null {
+  const t = normalize(text)
+    .replace(/[¡!¿?.,]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!t || t.split(" ").length > 6) return null;
+  const media = "(la |el |esta |este |a |the |this )?(musica|cancion|tema|video|spotify|youtube|music|song|track|musica|canco|video)";
+  const rules: [RegExp, MediaIntent][] = [
+    [new RegExp(`^(tico )?(siguiente|pasa|salta|next|skip|seguent|passa)( ${media}| a la siguiente)?$`), "next"],
+    [new RegExp(`^(tico )?(siguiente|next|seguent) ${media}$`), "next"],
+    [new RegExp(`^(tico )?(pon |play )?(la |el )?(cancion|video|tema|song|track|canco) (siguiente|next|seguent)$`), "next"],
+    [new RegExp(`^(tico )?(anterior|atras|previous|back|enrere)( ${media})?$`), "previous"],
+    [new RegExp(`^(tico )?(la |el )?(cancion|video|tema|song|track|canco) (anterior|previous)$`), "previous"],
+    [new RegExp(`^(tico )?(pausa|pausala|pausalo|para|parala|paralo|detén|deten|pause|stop|atura)( ${media})?$`), "playPause"],
+    [new RegExp(`^(tico )?(reanuda|sigue|continua|play|reproduce|dale al play|resume|continue)( ${media})?$`), "playPause"],
+    [/^(tico )?(sube|subele|subir|mas|turn up|volume up|puja|apuja)( el)? (volumen|volume|musica|music|so)$/, "volumeUp"],
+    [/^(tico )?(baja|bajale|bajar|menos|turn down|volume down|abaixa)( el)? (volumen|volume|musica|music|so)$/, "volumeDown"],
+    [/^(tico )?(silencio|silencia|mute|calla la musica|silenci)$/, "mute"],
+  ];
+  for (const [re, intent] of rules) if (re.test(t)) return intent;
+  return null;
+}

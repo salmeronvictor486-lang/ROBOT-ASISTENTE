@@ -8,6 +8,7 @@ mod error;
 mod files;
 mod island;
 mod mail;
+mod media;
 mod ocr;
 mod pet;
 mod platform;
@@ -91,6 +92,10 @@ pub fn run() {
             mail::mail_send,
             mail::mail_contacts,
             mail::mail_open_app,
+            media::media_now,
+            media::media_control,
+            media::media_volume,
+            media::media_set_volume,
             convert::convert_to_pdf,
             convert::conversions_recent,
             convert::conversions_clear,

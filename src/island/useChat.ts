@@ -385,6 +385,8 @@ export function errorKey(error: AppErrorPayload) {
     case "mailAuth":
     case "mail":
     case "noMailApp":
+    case "nothingPlaying":
+    case "media":
       return `error.${error.kind}` as const;
     default:
       return "error.other" as const;

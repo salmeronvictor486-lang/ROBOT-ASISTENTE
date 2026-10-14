@@ -44,7 +44,9 @@
     "targets": [
       "nsis",
       "app",
-      "dmg"
+      "dmg",
+      "appimage",
+      "deb"
     ],
     "publisher": "Victor",
     "copyright": "© 2026 Victor. Código MIT; Tico es un personaje con derechos reservados.",
@@ -75,6 +77,16 @@
       "minimumSystemVersion": "11.0",
       "signingIdentity": "-",
       "entitlements": "Entitlements.plist"
+    },
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libayatana-appindicator3-1",
+          "libdbus-1-3"
+        ],
+        "section": "utils"
+      }
     }
   }
 }

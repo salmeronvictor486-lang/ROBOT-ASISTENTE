@@ -73,6 +73,11 @@ pub enum AppError {
     #[error("No he encontrado ninguna app de correo")]
     #[cfg_attr(not(target_os = "windows"), allow(dead_code))]
     NoMailApp,
+    #[error("No suena nada ahora mismo")]
+    #[cfg_attr(target_os = "macos", allow(dead_code))]
+    NothingPlaying,
+    #[error("No se pudo controlar la música: {0}")]
+    Media(String),
 }
 
 impl AppError {
@@ -111,6 +116,8 @@ impl AppError {
             AppError::MailAuth => "mailAuth",
             AppError::Mail(_) => "mail",
             AppError::NoMailApp => "noMailApp",
+            AppError::NothingPlaying => "nothingPlaying",
+            AppError::Media(_) => "media",
         }
     }
 
@@ -136,7 +143,8 @@ impl AppError {
             | AppError::File(s)
             | AppError::Convert(s)
             | AppError::Database(s)
-            | AppError::Mail(s) => s.clone(),
+            | AppError::Mail(s)
+            | AppError::Media(s) => s.clone(),
             AppError::Network(e) => e.to_string(),
             AppError::Io(e) => e.to_string(),
             AppError::Json(e) => e.to_string(),
@@ -149,7 +157,8 @@ impl AppError {
             | AppError::NoDocument
             | AppError::MailSetup
             | AppError::MailAuth
-            | AppError::NoMailApp => String::new(),
+            | AppError::NoMailApp
+            | AppError::NothingPlaying => String::new(),
         }
     }
 
