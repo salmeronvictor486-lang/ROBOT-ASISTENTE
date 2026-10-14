@@ -8,6 +8,7 @@ name: Instaladores
 # Windows 10 en ARM, que no ejecuta programas x64 pero sí de 32 bits. Cada uno en
 # instalador (.exe) y en versión portable (.zip, sin instalar).
 # macOS: .dmg universal (Intel y Apple Silicon).
+# Linux: .deb (Ubuntu, Debian, Mint…) y AppImage (cualquier distribución, sin instalar).
 #
 # Se lanza a mano (Actions → Instaladores → Run workflow) o con una etiqueta v*.
 # La Release se llama como la versión de package.json (p. ej. v0.1.0): si ya existe,
@@ -42,6 +43,13 @@ jobs:
             out-dir: src-tauri/target/i686-pc-windows-msvc/release
             arch: x86
             artifact: Tico-Windows-32bits
+          - name: Linux
+            os: ubuntu-22.04
+            rust-targets: ""
+            args: --bundles appimage,deb
+            out-dir: src-tauri/target/release
+            arch: x86_64
+            artifact: Tico-Linux
           - name: macOS
             os: macos-latest
             rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
@@ -66,6 +74,15 @@ jobs:
         with:
           workspaces: src-tauri
           key: release-${{ matrix.artifact }}
+
+      # Ubuntu 22.04: el AppImage hecho ahí arranca en casi todas las distribuciones.
+      - name: Librerías de Linux
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev \
+            libxdo-dev libdbus-1-dev libpipewire-0.3-dev libspa-0.2-dev libclang-dev \
+            libxcb1-dev libxrandr-dev libwayland-dev libegl-dev libgbm-dev patchelf file
 
       - name: Instalar dependencias
         run: npm ci
@@ -116,6 +133,9 @@ jobs:
             mkdir -p portable
             cp "$dir/tico.exe" portable/Tico.exe
             (cd portable && 7z a -tzip "../out/Tico-Windows-${{ matrix.arch }}-portable.zip" Tico.exe)
+          elif [ "$RUNNER_OS" = "Linux" ]; then
+            cp "$dir"/bundle/appimage/*.AppImage out/Tico-Linux-x86_64.AppImage
+            cp "$dir"/bundle/deb/*.deb out/Tico-Linux-amd64.deb
           else
             cp "$dir"/bundle/dmg/*.dmg out/Tico-macOS.dmg
           fi
@@ -161,6 +181,7 @@ jobs:
             | Windows 64 bits (Intel/AMD) | `Tico-Windows-x64-setup.exe` | `Tico-Windows-x64-portable.zip` |
             | Windows 32 bits o Windows 10 ARM | `Tico-Windows-x86-setup.exe` | `Tico-Windows-x86-portable.zip` |
             | macOS (Intel y Apple Silicon) | `Tico-macOS.dmg` | — |
+            | Linux (Ubuntu, Debian, Mint…) | `Tico-Linux-amd64.deb` | `Tico-Linux-x86_64.AppImage` |
 
             La app no está firmada: Windows (SmartScreen) y macOS (Gatekeeper) avisarán la
             primera vez. En el README están los pasos para abrirla.

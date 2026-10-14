@@ -1,6 +1,6 @@
 # Tico
 
-Una **isla dinámica de escritorio** para Windows y macOS. Lleva el ratón al borde
+Una **isla dinámica de escritorio** para Windows, macOS y Linux. Lleva el ratón al borde
 superior de la pantalla y baja una cápsula negra con **Tico**, un pequeño robot que
 chatea contigo y, solo cuando tú se lo pides, mira tu pantalla para ayudarte.
 
@@ -51,6 +51,10 @@ chatea contigo y, solo cuando tú se lo pides, mira tu pantalla para ayudarte.
 - **Suelta archivos en la isla**: Tico los recoge con una caja y te propone qué hacer:
   **enviarlos por correo**, **moverlos a una carpeta** (las de tus espacios, a un clic),
   pasar a PDF, resumir, traducir o preguntar.
+- **Controla la música y los vídeos**: lo que suena en Spotify, Apple Music o YouTube sale
+  en la isla con su portada (en pequeño al pasar el ratón, en grande en la pestaña 🎵), con
+  anterior, pausa, siguiente y volumen. También vale escribir «pausa», «siguiente canción» o
+  «sube el volumen», o usar `/pausa` y `/siguiente`. Tico baila mientras suena.
 - **Envía archivos por correo sin salir de Tico**: se abre una ventanita con Para, Asunto y
   Mensaje ya rellenos y el archivo adjunto. Conecta tu cuenta en **Ajustes → Correo** (Gmail,
   iCloud, Outlook, Yahoo… se configuran solos; usa una *contraseña de aplicación*) y Tico lo
@@ -105,6 +109,8 @@ Pulsa el botón de tu sistema y la descarga empieza sola:
   <a href="https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Windows-x64-setup.exe"><img alt="Windows 64 bits (.exe)" src="https://img.shields.io/badge/Windows%2064%20bits-.exe-0078D4?style=for-the-badge&logo=windows&logoColor=white"></a>
   <a href="https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Windows-x86-setup.exe"><img alt="Windows 32 bits / ARM (.exe)" src="https://img.shields.io/badge/Windows%2032%20bits%20%2F%20ARM-.exe-0078D4?style=for-the-badge&logo=windows&logoColor=white"></a>
   <a href="https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-macOS.dmg"><img alt="macOS (.dmg)" src="https://img.shields.io/badge/macOS-.dmg-111111?style=for-the-badge&logo=apple&logoColor=white"></a>
+  <a href="https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Linux-amd64.deb"><img alt="Linux (.deb)" src="https://img.shields.io/badge/Linux-.deb-E95420?style=for-the-badge&logo=linux&logoColor=white"></a>
+  <a href="https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Linux-x86_64.AppImage"><img alt="Linux (AppImage)" src="https://img.shields.io/badge/Linux-AppImage-E95420?style=for-the-badge&logo=linux&logoColor=white"></a>
 </p>
 
 <p align="center">
@@ -118,9 +124,17 @@ Pulsa el botón de tu sistema y la descarga empieza sola:
 | [`Tico-Windows-x64-setup.exe`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Windows-x64-setup.exe) | Windows 10/11 de 64 bits con Intel o AMD (lo más común) |
 | [`Tico-Windows-x86-setup.exe`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Windows-x86-setup.exe) | Windows de 32 bits y Windows 10 con procesador ARM |
 | [`Tico-macOS.dmg`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-macOS.dmg) | Mac con Intel o Apple Silicon |
+| [`Tico-Linux-amd64.deb`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Linux-amd64.deb) | Ubuntu, Debian, Linux Mint, Pop!_OS… (64 bits) |
+| [`Tico-Linux-x86_64.AppImage`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Linux-x86_64.AppImage) | Cualquier Linux de 64 bits, sin instalar |
 | [`Tico-Windows-x64-portable.zip`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Windows-x64-portable.zip) | Igual que el `.exe` de 64 bits, pero sin instalar: descomprime y abre `Tico.exe` |
 | [`Tico-Windows-x86-portable.zip`](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest/download/Tico-Windows-x86-portable.zip) | Igual que el de 32 bits, sin instalar |
 | [Código fuente (`.zip`)](https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/archive/HEAD.zip) | Para compilarlo tú (ver más abajo) |
+
+En **Linux**: el `.deb` se instala con `sudo apt install ./Tico-Linux-amd64.deb`; el
+AppImage, con `chmod +x Tico-Linux-x86_64.AppImage` y doble clic. Funciona mejor en
+sesiones X11; en Wayland Tico se abre solo con XWayland para poder colocarse arriba. Las
+claves se guardan en el llavero del escritorio (GNOME Keyring o KWallet). El OCR no está
+disponible en Linux: Tico mira la pantalla igual, pero sin leer el texto aparte.
 
 ¿Cuál es el tuyo? En Windows: **Configuración → Sistema → Acerca de → Tipo de sistema**.
 Si al abrir el de 64 bits sale "No se puede ejecutar esta aplicación en el equipo",
@@ -222,7 +236,7 @@ cargo clippy --all-targets -- -D warnings
 cargo test
 ```
 
-GitHub Actions ejecuta lo mismo en Windows y macOS en cada push (workflow **CI**).
+GitHub Actions ejecuta lo mismo en Windows, macOS y Linux en cada push (workflow **CI**).
 
 ## Licencia
 
