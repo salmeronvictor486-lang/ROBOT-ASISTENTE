@@ -1,0 +1,72 @@
+name: Web
+
+# Publica la web de Tico (site/) en GitHub Pages cada vez que cambia.
+# Hace falta activarlo una vez: Settings → Pages → Source: «GitHub Actions».
+
+on:
+  push:
+    branches: [claude/new-session-usondv]
+    paths:
+      - "site/**"
+      - "src/site/**"
+      - "src/robot/**"
+      - "src/lib/**"
+      - "promo/tico-anuncio.mp4"
+      - "vite.site.config.ts"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/pages.yml"
+  workflow_dispatch:
+
+# Solo una publicación a la vez; no se cancela una a medias.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+# Por defecto, ningún permiso: cada trabajo pide solo lo que necesita.
+permissions: {}
+
+jobs:
+  build:
+    name: Compilar
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Comprobar
+        run: |
+          npm run typecheck
+          npx vitest run src/site
+
+      - name: Compilar la web
+        run: npm run site:build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist-site
+
+  deploy:
+    name: Publicar
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

@@ -21,6 +21,7 @@
   },
   "include": [
     "vite.config.ts",
+    "vite.site.config.ts",
     "eslint.config.js",
     "package.json"
   ]

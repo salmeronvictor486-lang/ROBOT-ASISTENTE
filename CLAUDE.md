@@ -129,6 +129,7 @@ src-tauri/src/
 | `npm run tauri build` | Genera el instalador del sistema actual |
 | `cd src-tauri && cargo clippy --all-targets -- -D warnings` | Lint de Rust |
 | `cd src-tauri && cargo test` | Tests de Rust (incluye un servidor HTTP falso para el streaming) |
+| `npm run site` / `npm run site:build` | Web de Tico en desarrollo (puerto 1430) / compilada en `dist-site/` |
 | `npx tauri icon assets/tico.svg` | Regenera los iconos (borra luego `icons/android` e `icons/ios`) |
 | Actions → Instaladores → Run workflow | Publica la Release `v<versión>` con `.exe`, `.zip` portable y `.dmg` |
 
@@ -268,6 +269,21 @@ src-tauri/src/
     (`memoryIntent`, `chat.local`). ↑ con el cuadro vacío edita la última pregunta
     (`editLast` + `chat_forget_last`). Markdown con enlaces (se abren con `open_url`), tablas
     y código con lenguaje y botón de copiar. El chat solo baja solo si ya estabas abajo.
+
+## Web (`site/`)
+Web para promocionar Tico en GitHub Pages (`https://salmeronvictor486-lang.github.io/ROBOT-ASISTENTE/`).
+`site/index.html` + `site/main.tsx` y el código en `src/site/`: `Site.tsx` (secciones), `HeroDemo.tsx`
+(isla de demostración con el Tico real; `demo.ts` es el guion puro, con tests), `download.ts`
+(qué archivo toca a cada sistema y arquitectura, con tests; enlaces a `releases/latest/download/`).
+Configuración aparte: `vite.site.config.ts` (raíz `site/`, salida `dist-site/`). La publica
+`.github/workflows/pages.yml` al cambiar algo de la web (hay que tener activado
+Settings → Pages → Source: «GitHub Actions»). Seguridad: GitHub Pages no deja poner cabeceras, así
+que la CSP va en un `<meta>` que el plugin pone solo al compilar (en desarrollo Vite usa scripts en
+línea): todo `'self'`, nada de terceros (ni fuentes ni analítica), Trusted Types sin políticas (nadie
+puede usar `innerHTML`), sin `frame-ancestors` (no va en `<meta>`), por eso `main.tsx` no pinta la
+página dentro de un iframe. Nada en línea (`assetsInlineLimit: 0`), sin mapas de código ni
+comentarios y con nombres de archivo por hash. Vídeo: el MP4 del anuncio y una copia WebM
+(`src/site/tico-anuncio.webm`, VP9 + Opus) para navegadores sin H.264.
 
 ## Anuncio (`promo/`)
 `promo.html` + `src/promo/` dibujan el anuncio de 35 s con los componentes reales (Tico,

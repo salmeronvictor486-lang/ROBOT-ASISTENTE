@@ -6,6 +6,8 @@ chatea contigo y, solo cuando tú se lo pides, mira tu pantalla para ayudarte.
 
 <p align="center"><img src="assets/tico.svg" alt="Tico" width="160"></p>
 
+<p align="center"><a href="https://salmeronvictor486-lang.github.io/ROBOT-ASISTENTE/"><b>🌐 Web de Tico</b></a> · <a href="https://github.com/salmeronvictor486-lang/ROBOT-ASISTENTE/releases/latest">Descargas</a></p>
+
 ## Anuncio
 
 <p align="center"><a href="promo/tico-anuncio.mp4"><img src="promo/tico-anuncio.gif" alt="Anuncio de Tico (35 s): la isla baja del notch, responde, mira la pantalla y cambia de expresión" width="720"></a></p>
