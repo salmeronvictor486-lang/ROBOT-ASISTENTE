@@ -68,5 +68,28 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # Sin Pages activado (o con otra fuente), deploy-pages solo dice «Not Found»: mejor explicarlo.
+      - name: Comprobar que GitHub Pages está activado
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+        run: |
+          if ! source=$(gh api "repos/$REPO/pages" --jq .build_type 2>/dev/null); then
+            source="desactivado"
+          fi
+          if [ "$source" != "workflow" ]; then
+            {
+              echo "## ❌ Falta un paso en GitHub Pages"
+              echo
+              echo "La web está compilada, pero GitHub Pages no está configurado para publicarla (ahora: \`$source\`)."
+              echo
+              echo "1. Abre https://github.com/$REPO/settings/pages"
+              echo "2. En **Build and deployment → Source** elige **GitHub Actions**."
+              echo "3. Vuelve a lanzar **Actions → Web → Run workflow**."
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error title=Falta activar GitHub Pages::Ve a Settings → Pages → Source y elige «GitHub Actions»; luego vuelve a lanzar este workflow."
+            exit 1
+          fi
+
       - id: deployment
         uses: actions/deploy-pages@v4
