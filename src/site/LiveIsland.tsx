@@ -52,11 +52,14 @@ export function LiveIsland({
   notice,
   onNoticeDone,
   onCapture,
+  beat,
 }: {
   notice: Notice | null;
   onNoticeDone: () => void;
   /** Destello sobre la página al "capturar la pantalla". */
   onCapture: (on: boolean) => void;
+  /** Compás de la música de fondo: Tico baila con ella. */
+  beat: number;
 }) {
   const [ctx, dispatch] = useReducer(islandReducer, initialIsland);
   const [log, setLog] = useState<Exchange[]>([]);
@@ -204,7 +207,7 @@ export function LiveIsland({
           baseColor={BASE}
           accentColor={ACCENT}
           expression={notice ? "box" : expression}
-          bounce={frame?.chunks ?? 0}
+          bounce={(frame?.chunks ?? 0) + beat}
           wave={state === "expanded" ? 1 : 0}
         />
       </div>

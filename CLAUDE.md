@@ -130,6 +130,7 @@ src-tauri/src/
 | `cd src-tauri && cargo clippy --all-targets -- -D warnings` | Lint de Rust |
 | `cd src-tauri && cargo test` | Tests de Rust (incluye un servidor HTTP falso para el streaming) |
 | `npm run site` / `npm run site:build` | Web de Tico en desarrollo (puerto 1430) / compilada en `dist-site/` |
+| `npm run site:music` | Regenera la música de fondo de la web (necesita numpy y ffmpeg) |
 | `npx tauri icon assets/tico.svg` | Regenera los iconos (borra luego `icons/android` e `icons/ios`) |
 | Actions → Instaladores → Run workflow | Publica la Release `v<versión>` con `.exe`, `.zip` portable y `.dmg` |
 
@@ -285,6 +286,10 @@ de escritorio y tinta del visor (con modo oscuro), el cian solo para luces y la 
 único elemento fuerte (botón de descarga y fila de tu sistema). Tipos alojados en la propia web con
 Fontsource (la CSP no deja Google Fonts): Bricolage Grotesque (titulares), Schibsted Grotesk (texto) y
 Martian Mono (medidas, archivos y teclas; no tiene ⇧ ni ⌘, por eso las teclas van escritas).
+Música de fondo original (`src/site/tico-musica.mp3`, 72 s a 80 BPM, compuesta y sintetizada con
+`scripts/web-music.py`; `npm run site:music` la regenera). Nunca suena sola: botón en la barra de
+menús (si la encendiste otra vez, arranca con tu primer clic). Va por Web Audio con `loop` para que
+el bucle no tenga hueco, se calla en otra pestaña y los Ticos rebotan con el compás (`useMusic.ts`).
 Configuración aparte: `vite.site.config.ts` (raíz `site/`, salida `dist-site/`). La publica
 `.github/workflows/pages.yml` al cambiar algo de la web (hay que tener activado
 Settings → Pages → Source: «GitHub Actions»). Seguridad: GitHub Pages no deja poner cabeceras, así

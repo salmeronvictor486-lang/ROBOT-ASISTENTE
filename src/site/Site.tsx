@@ -20,6 +20,8 @@ import {
 } from "./download";
 import { IconApple, IconArrowUp, IconExternal, IconGitHub, IconLinux, IconPlay, IconWindows } from "./icons";
 import { LiveIsland, openIsland, type Notice } from "./LiveIsland";
+import { useMusic, type Music } from "./useMusic";
+import music from "./tico-musica.mp3";
 import poster from "./poster.jpg";
 import videoWebm from "./tico-anuncio.webm";
 import video from "../../promo/tico-anuncio.mp4";
@@ -76,6 +78,7 @@ export function Site() {
   const device = useDevice();
   const [notice, setNotice] = useState<Notice | null>(null);
   const [flash, setFlash] = useState(false);
+  const bgm = useMusic(music);
 
   useEffect(() => {
     // Todos los Ticos de la página miran al cursor.
@@ -95,14 +98,14 @@ export function Site() {
       <a className="skip" href="#contenido">
         Saltar al contenido
       </a>
-      <MenuBar />
-      <LiveIsland notice={notice} onNoticeDone={clearNotice} onCapture={setFlash} />
+      <MenuBar music={bgm} />
+      <LiveIsland notice={notice} onNoticeDone={clearNotice} onCapture={setFlash} beat={bgm.beat} />
       <div className={`flash${flash ? " is-on" : ""}`} aria-hidden="true" />
       <main id="contenido">
-        <Hero device={device} onDownload={onDownload} />
+        <Hero device={device} onDownload={onDownload} beat={bgm.beat} />
         <States />
         <Phrases />
-        <Cast />
+        <Cast beat={bgm.beat} />
         <Film />
         <Doesnt />
         <Downloads device={device} onDownload={onDownload} />
@@ -149,7 +152,29 @@ function Clock() {
   );
 }
 
-function MenuBar() {
+/** Botón de música: barras que se mueven mientras suena. */
+function MusicButton({ music }: { music: Music }) {
+  return (
+    <button
+      type="button"
+      className={`music-btn${music.playing ? " is-on" : ""}`}
+      aria-pressed={music.playing}
+      aria-label="Música de fondo"
+      data-music-toggle=""
+      title="Música de fondo compuesta para Tico"
+      onClick={music.toggle}
+    >
+      <span className="music-bars" aria-hidden="true">
+        <i />
+        <i />
+        <i />
+      </span>
+      <span className="music-label">{music.playing ? "Música" : "Poner música"}</span>
+    </button>
+  );
+}
+
+function MenuBar({ music }: { music: Music }) {
   return (
     <header className="menubar">
       <a className="menubar-brand" href="#inicio">
@@ -164,9 +189,10 @@ function MenuBar() {
         <a href="#descargar">Descargar</a>
       </nav>
       <div className="menubar-right">
+        <MusicButton music={music} />
         <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
           <IconGitHub size={15} />
-          GitHub
+          <span className="menubar-gh">GitHub</span>
         </a>
         <Clock />
       </div>
@@ -179,7 +205,7 @@ function MenuBar() {
 const PET_MOODS: Expression[] = ["happy", "love", "wink", "surprised", "proud", "dizzy", "curious"];
 
 /** Tico en el escritorio: se arrastra, y con un clic saluda y cambia de cara. */
-function PetTico() {
+function PetTico({ beat }: { beat: number }) {
   const ref = useRef<HTMLButtonElement>(null);
   const drag = useRef({ x: 0, y: 0, startX: 0, startY: 0, baseX: 0, baseY: 0, moved: false, on: false });
   const [mood, setMood] = useState(0);
@@ -223,7 +249,7 @@ function PetTico() {
           setWave((w) => w + 1);
         }}
       >
-        <Tico size={260} baseColor={BASE} accentColor={ACCENT} expression={expression} wave={wave} />
+        <Tico size={260} baseColor={BASE} accentColor={ACCENT} expression={expression} wave={wave} bounce={beat} />
       </button>
       <figcaption>
         <span>Tico en el escritorio</span>
@@ -236,9 +262,11 @@ function PetTico() {
 function Hero({
   device,
   onDownload,
+  beat,
 }: {
   device: ReturnType<typeof useDevice>;
   onDownload: (asset: Asset) => void;
+  beat: number;
 }) {
   const { platform, primary, touch } = device;
   return (
@@ -300,7 +328,7 @@ function Hero({
             <a href="#descargar">todas las descargas</a>
           </p>
         </div>
-        <PetTico />
+        <PetTico beat={beat} />
       </div>
     </section>
   );
@@ -451,13 +479,13 @@ const CAST_LINES: Record<string, string> = {
 
 const CAST_MOODS: Expression[] = ["happy", "wink", "love", "surprised", "proud", "dizzy", "thinking"];
 
-function CastMember({ tico, index }: { tico: (typeof DEFAULT_TICOS)[number]; index: number }) {
+function CastMember({ tico, index, beat }: { tico: (typeof DEFAULT_TICOS)[number]; index: number; beat: number }) {
   const [taps, setTaps] = useState(0);
   const expression: Expression = taps === 0 ? "idle" : (CAST_MOODS[(taps + index) % CAST_MOODS.length] ?? "happy");
   return (
     <li className="cast-member" style={{ ["--tico-accent" as string]: tico.accentColor }}>
       <button type="button" onClick={() => setTaps((t) => t + 1)} aria-label={`${tico.name}: haz clic para que reaccione`}>
-        <Tico size={132} baseColor={tico.baseColor} accentColor={tico.accentColor} expression={expression} outfit={tico.outfit} wave={taps} />
+        <Tico size={132} baseColor={tico.baseColor} accentColor={tico.accentColor} expression={expression} outfit={tico.outfit} wave={taps} bounce={beat} />
       </button>
       <h3>
         <i aria-hidden="true" />
@@ -468,7 +496,7 @@ function CastMember({ tico, index }: { tico: (typeof DEFAULT_TICOS)[number]; ind
   );
 }
 
-function Cast() {
+function Cast({ beat }: { beat: number }) {
   return (
     <section className="section" id="ticos">
       <div className="section-head">
@@ -481,7 +509,7 @@ function Cast() {
       </div>
       <ul className="cast">
         {DEFAULT_TICOS.map((tico, i) => (
-          <CastMember key={tico.id} tico={tico} index={i} />
+          <CastMember key={tico.id} tico={tico} index={i} beat={beat} />
         ))}
       </ul>
       <p className="cast-note">Haz clic en cualquiera: tienen 15 expresiones.</p>
@@ -707,7 +735,8 @@ function Footer() {
         </p>
         <p className="footer-legal">
           El código tiene licencia MIT. Tico, su nombre, su diseño y sus sonidos son de Victor, con
-          todos los derechos reservados. Esta web no usa cookies ni analítica.
+          todos los derechos reservados. La música de fondo es original, compuesta para Tico. Esta
+          web no usa cookies ni analítica.
         </p>
         <nav aria-label="Enlaces">
           <a href={REPO_URL} target="_blank" rel="noopener noreferrer">
