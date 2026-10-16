@@ -15,43 +15,52 @@ export interface Asset {
   label: string;
   /** Detalle debajo del botón. */
   note: string;
+  /** Tamaño aproximado (el de la 1.2.0; cambia poco entre versiones). */
+  size: string;
 }
 
 export const ASSETS = {
   winX64: {
     file: "Tico-Windows-x64-setup.exe",
-    label: "Windows 64 bits",
-    note: "Instalador · Intel y AMD",
+    label: "Instalador",
+    note: "Windows 10 y 11 de 64 bits (Intel o AMD)",
+    size: "4,4 MB",
   },
   winX64Zip: {
     file: "Tico-Windows-x64-portable.zip",
-    label: "Portable 64 bits",
-    note: "Sin instalar (.zip)",
+    label: "Portable",
+    note: "Sin instalar · 64 bits",
+    size: "5,5 MB",
   },
   winX86: {
     file: "Tico-Windows-x86-setup.exe",
-    label: "Windows 32 bits o ARM",
-    note: "Instalador · también Windows 10 ARM",
+    label: "Instalador 32 bits",
+    note: "Windows de 32 bits y Windows 10 ARM",
+    size: "4,0 MB",
   },
   winX86Zip: {
     file: "Tico-Windows-x86-portable.zip",
     label: "Portable 32 bits",
-    note: "Sin instalar (.zip)",
+    note: "Sin instalar · 32 bits y ARM",
+    size: "4,9 MB",
   },
   mac: {
     file: "Tico-macOS.dmg",
-    label: "macOS",
-    note: "Apple Silicon e Intel · .dmg",
+    label: "Imagen de disco",
+    note: "macOS 11 o posterior · Apple Silicon e Intel",
+    size: "10,6 MB",
   },
   appImage: {
     file: "Tico-Linux-x86_64.AppImage",
-    label: "Linux AppImage",
-    note: "Cualquier distribución reciente",
+    label: "AppImage",
+    note: "Sin instalar · Fedora 40+, Arch y otras",
+    size: "85 MB",
   },
   deb: {
     file: "Tico-Linux-amd64.deb",
-    label: "Ubuntu y Debian",
-    note: "Paquete .deb",
+    label: "Paquete .deb",
+    note: "Ubuntu 24.04+, Debian 13, Linux Mint 22",
+    size: "6,4 MB",
   },
 } satisfies Record<string, Asset>;
 

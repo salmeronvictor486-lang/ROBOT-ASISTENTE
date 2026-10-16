@@ -272,9 +272,19 @@ src-tauri/src/
 
 ## Web (`site/`)
 Web para promocionar Tico en GitHub Pages (`https://salmeronvictor486-lang.github.io/ROBOT-ASISTENTE/`).
-`site/index.html` + `site/main.tsx` y el código en `src/site/`: `Site.tsx` (secciones), `HeroDemo.tsx`
-(isla de demostración con el Tico real; `demo.ts` es el guion puro, con tests), `download.ts`
-(qué archivo toca a cada sistema y arquitectura, con tests; enlaces a `releases/latest/download/`).
+`site/index.html` + `site/main.tsx` y el código en `src/site/`. Idea de diseño: la página es una
+pantalla; arriba hay una barra de menús (con reloj) y de su borde cuelga la isla de verdad
+(`LiveIsland.tsx`), que usa la misma máquina de estados que la app (`island/machine.ts`): ratón 150 ms
+en los 3 px de arriba → asoma, encima → crece, clic o Ctrl + Mayús + Espacio → se abre, Esc → se va.
+Abierta es una demo con preguntas a elegir (`replies.ts`, guion puro con tests; «¿qué ves?» hace un
+destello sobre la página) y al descargar enseña ahí el aviso de la primera vez. `Site.tsx`: portada con
+Tico arrastrable, los cuatro estados dibujados a escala 1:2 con `BASE_SIZES`, frases que le puedes
+decir, los Ticos de serie (`DEFAULT_TICOS`), el anuncio, «Lo que Tico no hace», descargas como hoja de
+versión (`download.ts`: archivo por sistema y arquitectura, con tests) y preguntas. Colores: gris claro
+de escritorio y tinta del visor (con modo oscuro), el cian solo para luces y la cápsula negra como
+único elemento fuerte (botón de descarga y fila de tu sistema). Tipos alojados en la propia web con
+Fontsource (la CSP no deja Google Fonts): Bricolage Grotesque (titulares), Schibsted Grotesk (texto) y
+Martian Mono (medidas, archivos y teclas; no tiene ⇧ ni ⌘, por eso las teclas van escritas).
 Configuración aparte: `vite.site.config.ts` (raíz `site/`, salida `dist-site/`). La publica
 `.github/workflows/pages.yml` al cambiar algo de la web (hay que tener activado
 Settings → Pages → Source: «GitHub Actions»). Seguridad: GitHub Pages no deja poner cabeceras, así

@@ -20,93 +20,15 @@ function Icon({ children, size = 24 }: { children: ReactNode; size?: number }) {
   );
 }
 
-export const IconIsland = () => (
-  <Icon>
-    <rect x="3" y="4" width="18" height="16" rx="3" />
-    <rect x="8" y="4" width="8" height="4" rx="2" fill="currentColor" stroke="none" />
+export const IconArrowUp = () => (
+  <Icon size={18}>
+    <path d="M12 19V5M6 11l6-6 6 6" />
   </Icon>
 );
 
-export const IconEye = () => (
-  <Icon>
-    <path d="M2.5 12s3.5-6.5 9.5-6.5S21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
-    <circle cx="12" cy="12" r="2.8" />
-  </Icon>
-);
-
-export const IconSpark = () => (
-  <Icon>
-    <path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6" />
-  </Icon>
-);
-
-export const IconDoc = () => (
-  <Icon>
-    <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8Z" />
-    <path d="M14 3v5h5M9 14h6M9 17h4" />
-  </Icon>
-);
-
-export const IconMail = () => (
-  <Icon>
-    <rect x="3" y="5" width="18" height="14" rx="2.5" />
-    <path d="m4 7 8 6 8-6" />
-  </Icon>
-);
-
-export const IconMusic = () => (
-  <Icon>
-    <path d="M9 18V6l11-2v12" />
-    <circle cx="6.5" cy="18" r="2.5" />
-    <circle cx="17.5" cy="16" r="2.5" />
-  </Icon>
-);
-
-export const IconRobots = () => (
-  <Icon>
-    <rect x="3" y="7" width="10" height="9" rx="3" />
-    <rect x="11" y="9" width="10" height="9" rx="3" />
-    <path d="M8 7V4M16 9V6" />
-  </Icon>
-);
-
-export const IconMemory = () => (
-  <Icon>
-    <path d="M12 3a6 6 0 0 0-6 6c0 2.4 1.3 3.7 2.3 4.7.7.7 1.2 1.5 1.2 2.5V18h5v-1.8c0-1 .5-1.8 1.2-2.5C16.7 12.7 18 11.4 18 9a6 6 0 0 0-6-6Z" />
-    <path d="M10 21h4" />
-  </Icon>
-);
-
-export const IconDesktop = () => (
-  <Icon>
-    <rect x="3" y="4" width="18" height="12" rx="2" />
-    <path d="M8 20h8M12 16v4" />
-  </Icon>
-);
-
-export const IconLock = () => (
-  <Icon>
-    <rect x="4.5" y="10.5" width="15" height="10" rx="2.5" />
-    <path d="M8 10.5V7.5a4 4 0 0 1 8 0v3" />
-  </Icon>
-);
-
-export const IconKey = () => (
-  <Icon>
-    <circle cx="8" cy="15" r="4" />
-    <path d="m11 12 8.5-8.5M16 7l2.5 2.5M14 9l2 2" />
-  </Icon>
-);
-
-export const IconCloudOff = () => (
-  <Icon>
-    <path d="M3 3l18 18M8.5 7.4A5 5 0 0 1 17 10a4 4 0 0 1 2.6 6.9M16 18H7a4 4 0 0 1-1.6-7.7" />
-  </Icon>
-);
-
-export const IconCode = () => (
-  <Icon>
-    <path d="m8 8-4 4 4 4M16 8l4 4-4 4M13.5 5l-3 14" />
+export const IconExternal = () => (
+  <Icon size={16}>
+    <path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5" />
   </Icon>
 );
 
